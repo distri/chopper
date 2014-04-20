@@ -14,7 +14,7 @@ window["distri/chopper:master"]({
     },
     "main.coffee.md": {
       "path": "main.coffee.md",
-      "content": "Chopper\n=======\n\nChop up images in the chop shop.\n\n    {applyStylesheet} = require \"util\"\n\n    drop = require \"./lib/drop\"\n    paste = require \"./lib/paste\"\n\n    applyStylesheet require \"./style\"\n\n    Dragzone = require \"./lib/dragzone\"\n\n    Dragzone($(\"body\"))\n\n    handler = (file) ->\n      img = document.createElement \"img\"\n      img.src = URL.createObjectURL(file)\n\n      document.body.appendChild img\n\n    drop document.querySelector(\"html\"), handler\n\n    $(\"body\").on \"move\", \"img\", ({startX, startY, deltaX, deltaY}) ->\n      $(this).css\n        left: startX + deltaX\n        top: startY + deltaY\n\n    paste document,\n      callback: handler\n",
+      "content": "Chopper\n=======\n\nChop up images in the chop shop.\n\n    {applyStylesheet} = require \"util\"\n\n    drop = require \"./lib/drop\"\n    paste = require \"./lib/paste\"\n\n    applyStylesheet require \"./style\"\n\n    Dragzone = require \"./lib/dragzone\"\n\n    Dragzone($(\"body\"))\n\n    handler = (file) ->\n      addImage URL.createObjectURL(file)\n\n    drop document.querySelector(\"html\"), handler\n\n    paste document,\n      callback: handler\n\n    S3Load = require \"./s3load\"\n    S3Load(\"http://addressable.s3.amazonaws.com/?prefix=uploads\")\n    .then (items) ->\n      items.map (item) ->\n        \"http://addressable.s3.amazonaws.com/#{item}\"\n      .map addImage\n\n    addImage = (src) ->\n      img = document.createElement \"img\"\n\n      img.onload = ->\n        $(this).css\n          top: (document.body.clientHeight - this.height) / 2\n          left: (document.body.clientWidth - this.width) / 2\n\n      img.src = src\n\n      document.body.appendChild img\n",
       "mode": "100644"
     },
     "style.styl": {
@@ -41,12 +41,17 @@ window["distri/chopper:master"]({
       "path": "lib/dragzone.coffee.md",
       "content": "Highway through the Dragger Zone\n================================\n\n    module.exports = ($element) ->\n      activeItem = null\n      offset = null\n\n      $element.bind\n        \"touchstart mousedown\": (event) ->          \n          $target = $(event.target)\n          if $target.is \"img\"\n            event.preventDefault()\n            activeItem = $target\n\n            startPosition = localPosition(event)\n            itemStart = $target.position()\n\n            offset = subtract itemStart, startPosition\n\n          return\n\n        \"touchmove mousemove\": (event) ->\n          return unless activeItem\n\n          activeItem.css add(localPosition(event), offset)\n\n        \"touchend mouseup\": (event) ->\n          activeItem = null\n\n          return\n\n\nHelpers\n-------\n\n    localPosition = (event) ->\n      top: event.pageY\n      left: event.pageX\n\n    add = (a, b) ->\n      top: a.top + b.top\n      left: a.left + b.left\n\n    subtract = (a, b) ->\n      top: a.top - b.top\n      left: a.left - b.left\n",
       "mode": "100644"
+    },
+    "s3load.coffee.md": {
+      "path": "s3load.coffee.md",
+      "content": "List Bucket Contents from S3\n============================\n\n    module.exports = (url) ->\n      $.get(url).then (data) ->\n        $(data).find(\"Key\").map ->\n          this.innerHTML\n        .get()\n",
+      "mode": "100644"
     }
   },
   "distribution": {
     "main": {
       "path": "main",
-      "content": "(function() {\n  var Dragzone, applyStylesheet, drop, handler, paste;\n\n  applyStylesheet = require(\"util\").applyStylesheet;\n\n  drop = require(\"./lib/drop\");\n\n  paste = require(\"./lib/paste\");\n\n  applyStylesheet(require(\"./style\"));\n\n  Dragzone = require(\"./lib/dragzone\");\n\n  Dragzone($(\"body\"));\n\n  handler = function(file) {\n    var img;\n    img = document.createElement(\"img\");\n    img.src = URL.createObjectURL(file);\n    return document.body.appendChild(img);\n  };\n\n  drop(document.querySelector(\"html\"), handler);\n\n  $(\"body\").on(\"move\", \"img\", function(_arg) {\n    var deltaX, deltaY, startX, startY;\n    startX = _arg.startX, startY = _arg.startY, deltaX = _arg.deltaX, deltaY = _arg.deltaY;\n    return $(this).css({\n      left: startX + deltaX,\n      top: startY + deltaY\n    });\n  });\n\n  paste(document, {\n    callback: handler\n  });\n\n}).call(this);\n",
+      "content": "(function() {\n  var Dragzone, S3Load, addImage, applyStylesheet, drop, handler, paste;\n\n  applyStylesheet = require(\"util\").applyStylesheet;\n\n  drop = require(\"./lib/drop\");\n\n  paste = require(\"./lib/paste\");\n\n  applyStylesheet(require(\"./style\"));\n\n  Dragzone = require(\"./lib/dragzone\");\n\n  Dragzone($(\"body\"));\n\n  handler = function(file) {\n    return addImage(URL.createObjectURL(file));\n  };\n\n  drop(document.querySelector(\"html\"), handler);\n\n  paste(document, {\n    callback: handler\n  });\n\n  S3Load = require(\"./s3load\");\n\n  S3Load(\"http://addressable.s3.amazonaws.com/?prefix=uploads\").then(function(items) {\n    return items.map(function(item) {\n      return \"http://addressable.s3.amazonaws.com/\" + item;\n    }).map(addImage);\n  });\n\n  addImage = function(src) {\n    var img;\n    img = document.createElement(\"img\");\n    img.onload = function() {\n      return $(this).css({\n        top: (document.body.clientHeight - this.height) / 2,\n        left: (document.body.clientWidth - this.width) / 2\n      });\n    };\n    img.src = src;\n    return document.body.appendChild(img);\n  };\n\n}).call(this);\n",
       "type": "blob"
     },
     "style": {
@@ -72,6 +77,11 @@ window["distri/chopper:master"]({
     "lib/dragzone": {
       "path": "lib/dragzone",
       "content": "(function() {\n  var add, localPosition, subtract;\n\n  module.exports = function($element) {\n    var activeItem, offset;\n    activeItem = null;\n    offset = null;\n    return $element.bind({\n      \"touchstart mousedown\": function(event) {\n        var $target, itemStart, startPosition;\n        $target = $(event.target);\n        if ($target.is(\"img\")) {\n          event.preventDefault();\n          activeItem = $target;\n          startPosition = localPosition(event);\n          itemStart = $target.position();\n          offset = subtract(itemStart, startPosition);\n        }\n      },\n      \"touchmove mousemove\": function(event) {\n        if (!activeItem) {\n          return;\n        }\n        return activeItem.css(add(localPosition(event), offset));\n      },\n      \"touchend mouseup\": function(event) {\n        activeItem = null;\n      }\n    });\n  };\n\n  localPosition = function(event) {\n    return {\n      top: event.pageY,\n      left: event.pageX\n    };\n  };\n\n  add = function(a, b) {\n    return {\n      top: a.top + b.top,\n      left: a.left + b.left\n    };\n  };\n\n  subtract = function(a, b) {\n    return {\n      top: a.top - b.top,\n      left: a.left - b.left\n    };\n  };\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "s3load": {
+      "path": "s3load",
+      "content": "(function() {\n  module.exports = function(url) {\n    return $.get(url).then(function(data) {\n      return $(data).find(\"Key\").map(function() {\n        return this.innerHTML;\n      }).get();\n    });\n  };\n\n}).call(this);\n",
       "type": "blob"
     }
   },

@@ -47,20 +47,31 @@ Dragzone = require <span class="string">"./lib/dragzone"</span>
 Dragzone($(<span class="string">"body"</span>))
 
 <span class="function"><span class="title">handler</span></span> = (file) -&gt;
-  img = document.createElement <span class="string">"img"</span>
-  img.src = URL.createObjectURL(file)
-
-  document.body.appendChild img
+  addImage URL.createObjectURL(file)
 
 drop document.querySelector(<span class="string">"html"</span>), handler
 
-$(<span class="string">"body"</span>).<span class="literal">on</span> <span class="string">"move"</span>, <span class="string">"img"</span>, ({startX, startY, deltaX, deltaY}) -&gt;
-  $(<span class="keyword">this</span>).css
-    left: startX + deltaX
-    top: startY + deltaY
-
 paste document,
-  callback: handler</code></pre>
+  callback: handler
+
+S3Load = require <span class="string">"./s3load"</span>
+S3Load(<span class="string">"http://addressable.s3.amazonaws.com/?prefix=uploads"</span>)
+.<span class="keyword">then</span> (items) -&gt;
+  items.map (item) -&gt;
+    <span class="string">"http://addressable.s3.amazonaws.com/<span class="subst">#{item}</span>"</span>
+  .map addImage
+
+<span class="function"><span class="title">addImage</span></span> = (src) -&gt;
+  img = document.createElement <span class="string">"img"</span>
+
+  img.<span class="function"><span class="title">onload</span></span> = -&gt;
+    $(<span class="keyword">this</span>).css
+      top: (document.body.clientHeight - <span class="keyword">this</span>.height) / <span class="number">2</span>
+      left: (document.body.clientWidth - <span class="keyword">this</span>.width) / <span class="number">2</span>
+
+  img.src = src
+
+  document.body.appendChild img</code></pre>
 </div>
         </li>
         
