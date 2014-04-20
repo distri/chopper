@@ -15,17 +15,28 @@ Chop up images in the chop shop.
     Dragzone($("body"))
 
     handler = (file) ->
-      img = document.createElement "img"
-      img.src = URL.createObjectURL(file)
-
-      document.body.appendChild img
+      addImage URL.createObjectURL(file)
 
     drop document.querySelector("html"), handler
 
-    $("body").on "move", "img", ({startX, startY, deltaX, deltaY}) ->
-      $(this).css
-        left: startX + deltaX
-        top: startY + deltaY
-
     paste document,
       callback: handler
+
+    S3Load = require "./s3load"
+    S3Load("http://addressable.s3.amazonaws.com/?prefix=uploads")
+    .then (items) ->
+      items.map (item) ->
+        "http://addressable.s3.amazonaws.com/#{item}"
+      .map addImage
+
+    addImage = (src) ->
+      img = document.createElement "img"
+
+      img.onload = ->
+        $(this).css
+          top: (document.body.clientHeight - this.height) / 2
+          left: (document.body.clientWidth - this.width) / 2
+
+      img.src = src
+
+      document.body.appendChild img
