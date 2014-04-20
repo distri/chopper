@@ -35,13 +35,16 @@
               <p>Chop up images in the chop shop.</p>
 
             </div>
-            <div class="content"><pre><code class="lang-coffeescript"><span class="comment"># require "jquery-utils"</span>
-{applyStylesheet} = require <span class="string">"util"</span>
+            <div class="content"><pre><code class="lang-coffeescript">{applyStylesheet} = require <span class="string">"util"</span>
 
 drop = require <span class="string">"./lib/drop"</span>
 paste = require <span class="string">"./lib/paste"</span>
 
 applyStylesheet require <span class="string">"./style"</span>
+
+Dragzone = require <span class="string">"./lib/dragzone"</span>
+
+Dragzone($(<span class="string">"body"</span>))
 
 <span class="function"><span class="title">handler</span></span> = (file) -&gt;
   img = document.createElement <span class="string">"img"</span>
@@ -51,6 +54,11 @@ applyStylesheet require <span class="string">"./style"</span>
 
 drop document.querySelector(<span class="string">"html"</span>), handler
 
+$(<span class="string">"body"</span>).<span class="literal">on</span> <span class="string">"move"</span>, <span class="string">"img"</span>, ({startX, startY, deltaX, deltaY}) -&gt;
+  $(<span class="keyword">this</span>).css
+    left: startX + deltaX
+    top: startY + deltaY
+
 paste document,
   callback: handler</code></pre>
 </div>
@@ -59,7 +67,8 @@ paste document,
     </ul>
   </div>
   <script src="https://code.jquery.com/jquery-1.10.1.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/coffee-script/1.6.3/coffee-script.min.js"></script><script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/coffee-script/1.6.3/coffee-script.min.js"></script>
+<script src="https://code.jquery.com/jquery-1.11.0.min.js"></script><script>
   (function() {
   var ErrorReporter, bindUpdates, createEditor, exec, findInteractiveElements, readShebang, runners;
 

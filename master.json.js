@@ -14,17 +14,17 @@ window["distri/chopper:master"]({
     },
     "main.coffee.md": {
       "path": "main.coffee.md",
-      "content": "Chopper\n=======\n\nChop up images in the chop shop.\n\n    # require \"jquery-utils\"\n    {applyStylesheet} = require \"util\"\n\n    drop = require \"./lib/drop\"\n    paste = require \"./lib/paste\"\n\n    applyStylesheet require \"./style\"\n\n    handler = (file) ->\n      img = document.createElement \"img\"\n      img.src = URL.createObjectURL(file)\n\n      document.body.appendChild img\n\n    drop document.querySelector(\"html\"), handler\n\n    paste document,\n      callback: handler\n",
+      "content": "Chopper\n=======\n\nChop up images in the chop shop.\n\n    {applyStylesheet} = require \"util\"\n\n    drop = require \"./lib/drop\"\n    paste = require \"./lib/paste\"\n\n    applyStylesheet require \"./style\"\n\n    Dragzone = require \"./lib/dragzone\"\n\n    Dragzone($(\"body\"))\n\n    handler = (file) ->\n      img = document.createElement \"img\"\n      img.src = URL.createObjectURL(file)\n\n      document.body.appendChild img\n\n    drop document.querySelector(\"html\"), handler\n\n    $(\"body\").on \"move\", \"img\", ({startX, startY, deltaX, deltaY}) ->\n      $(this).css\n        left: startX + deltaX\n        top: startY + deltaY\n\n    paste document,\n      callback: handler\n",
       "mode": "100644"
     },
     "style.styl": {
       "path": "style.styl",
-      "content": "html\n  height: 100%\n\nbody\n  height: 100%\n  margin: 0\n  position: relative\n\nimg\n  position: absolute\n",
+      "content": "html\n  height: 100%\n\nbody\n  height: 100%\n  margin: 0\n  position: relative\n  overflow: hidden\n\nimg\n  position: absolute\n",
       "mode": "100644"
     },
     "pixie.cson": {
       "path": "pixie.cson",
-      "content": "version: \"0.1.0\"\nremoteDependencies: [\n]\ndependencies:\n  util: \"distri/util:v0.1.0\"\n",
+      "content": "version: \"0.1.0\"\nremoteDependencies: [\n  \"https://code.jquery.com/jquery-1.11.0.min.js\"\n]\ndependencies:\n  util: \"distri/util:v0.1.0\"\n",
       "mode": "100644"
     },
     "lib/drop.coffee.md": {
@@ -36,22 +36,27 @@ window["distri/chopper:master"]({
       "path": "lib/paste.coffee.md",
       "content": "Paste File Reader\n=================\n\n    module.exports = (element, {matchType, callback}={}) ->\n      matchType ?= /image.*/\n\n      element.addEventListener 'paste', ({clipboardData}) ->\n        found = false\n\n        Array::forEach.call clipboardData.types, (type, i) ->\n          return if found\n  \n          if type.match(matchType) or (clipboardData.items and clipboardData.items[i].type.match(matchType))\n            file = clipboardData.items[i].getAsFile()\n  \n            callback(file)\n  \n            found = true\n",
       "mode": "100644"
+    },
+    "lib/dragzone.coffee.md": {
+      "path": "lib/dragzone.coffee.md",
+      "content": "Highway through the Dragger Zone\n================================\n\n    module.exports = ($element) ->\n      activeItem = null\n      offset = null\n\n      $element.bind\n        \"touchstart mousedown\": (event) ->          \n          $target = $(event.target)\n          if $target.is \"img\"\n            event.preventDefault()\n            activeItem = $target\n\n            startPosition = localPosition(event)\n            itemStart = $target.position()\n\n            offset = subtract itemStart, startPosition\n\n          return\n\n        \"touchmove mousemove\": (event) ->\n          return unless activeItem\n\n          activeItem.css add(localPosition(event), offset)\n\n        \"touchend mouseup\": (event) ->\n          activeItem = null\n\n          return\n\n\nHelpers\n-------\n\n    localPosition = (event) ->\n      top: event.pageY\n      left: event.pageX\n\n    add = (a, b) ->\n      top: a.top + b.top\n      left: a.left + b.left\n\n    subtract = (a, b) ->\n      top: a.top - b.top\n      left: a.left - b.left\n",
+      "mode": "100644"
     }
   },
   "distribution": {
     "main": {
       "path": "main",
-      "content": "(function() {\n  var applyStylesheet, drop, handler, paste;\n\n  applyStylesheet = require(\"util\").applyStylesheet;\n\n  drop = require(\"./lib/drop\");\n\n  paste = require(\"./lib/paste\");\n\n  applyStylesheet(require(\"./style\"));\n\n  handler = function(file) {\n    var img;\n    img = document.createElement(\"img\");\n    img.src = URL.createObjectURL(file);\n    return document.body.appendChild(img);\n  };\n\n  drop(document.querySelector(\"html\"), handler);\n\n  paste(document, {\n    callback: handler\n  });\n\n}).call(this);\n",
+      "content": "(function() {\n  var Dragzone, applyStylesheet, drop, handler, paste;\n\n  applyStylesheet = require(\"util\").applyStylesheet;\n\n  drop = require(\"./lib/drop\");\n\n  paste = require(\"./lib/paste\");\n\n  applyStylesheet(require(\"./style\"));\n\n  Dragzone = require(\"./lib/dragzone\");\n\n  Dragzone($(\"body\"));\n\n  handler = function(file) {\n    var img;\n    img = document.createElement(\"img\");\n    img.src = URL.createObjectURL(file);\n    return document.body.appendChild(img);\n  };\n\n  drop(document.querySelector(\"html\"), handler);\n\n  $(\"body\").on(\"move\", \"img\", function(_arg) {\n    var deltaX, deltaY, startX, startY;\n    startX = _arg.startX, startY = _arg.startY, deltaX = _arg.deltaX, deltaY = _arg.deltaY;\n    return $(this).css({\n      left: startX + deltaX,\n      top: startY + deltaY\n    });\n  });\n\n  paste(document, {\n    callback: handler\n  });\n\n}).call(this);\n",
       "type": "blob"
     },
     "style": {
       "path": "style",
-      "content": "module.exports = \"html {\\n  height: 100%;\\n}\\n\\nbody {\\n  height: 100%;\\n  margin: 0;\\n  position: relative;\\n}\\n\\nimg {\\n  position: absolute;\\n}\";",
+      "content": "module.exports = \"html {\\n  height: 100%;\\n}\\n\\nbody {\\n  height: 100%;\\n  margin: 0;\\n  position: relative;\\n  overflow: hidden;\\n}\\n\\nimg {\\n  position: absolute;\\n}\";",
       "type": "blob"
     },
     "pixie": {
       "path": "pixie",
-      "content": "module.exports = {\"version\":\"0.1.0\",\"remoteDependencies\":[],\"dependencies\":{\"util\":\"distri/util:v0.1.0\"}};",
+      "content": "module.exports = {\"version\":\"0.1.0\",\"remoteDependencies\":[\"https://code.jquery.com/jquery-1.11.0.min.js\"],\"dependencies\":{\"util\":\"distri/util:v0.1.0\"}};",
       "type": "blob"
     },
     "lib/drop": {
@@ -63,6 +68,11 @@ window["distri/chopper:master"]({
       "path": "lib/paste",
       "content": "(function() {\n  module.exports = function(element, _arg) {\n    var callback, matchType, _ref;\n    _ref = _arg != null ? _arg : {}, matchType = _ref.matchType, callback = _ref.callback;\n    if (matchType == null) {\n      matchType = /image.*/;\n    }\n    return element.addEventListener('paste', function(_arg1) {\n      var clipboardData, found;\n      clipboardData = _arg1.clipboardData;\n      found = false;\n      return Array.prototype.forEach.call(clipboardData.types, function(type, i) {\n        var file;\n        if (found) {\n          return;\n        }\n        if (type.match(matchType) || (clipboardData.items && clipboardData.items[i].type.match(matchType))) {\n          file = clipboardData.items[i].getAsFile();\n          callback(file);\n          return found = true;\n        }\n      });\n    });\n  };\n\n}).call(this);\n",
       "type": "blob"
+    },
+    "lib/dragzone": {
+      "path": "lib/dragzone",
+      "content": "(function() {\n  var add, localPosition, subtract;\n\n  module.exports = function($element) {\n    var activeItem, offset;\n    activeItem = null;\n    offset = null;\n    return $element.bind({\n      \"touchstart mousedown\": function(event) {\n        var $target, itemStart, startPosition;\n        $target = $(event.target);\n        if ($target.is(\"img\")) {\n          event.preventDefault();\n          activeItem = $target;\n          startPosition = localPosition(event);\n          itemStart = $target.position();\n          offset = subtract(itemStart, startPosition);\n        }\n      },\n      \"touchmove mousemove\": function(event) {\n        if (!activeItem) {\n          return;\n        }\n        return activeItem.css(add(localPosition(event), offset));\n      },\n      \"touchend mouseup\": function(event) {\n        activeItem = null;\n      }\n    });\n  };\n\n  localPosition = function(event) {\n    return {\n      top: event.pageY,\n      left: event.pageX\n    };\n  };\n\n  add = function(a, b) {\n    return {\n      top: a.top + b.top,\n      left: a.left + b.left\n    };\n  };\n\n  subtract = function(a, b) {\n    return {\n      top: a.top - b.top,\n      left: a.left - b.left\n    };\n  };\n\n}).call(this);\n",
+      "type": "blob"
     }
   },
   "progenitor": {
@@ -70,7 +80,9 @@ window["distri/chopper:master"]({
   },
   "version": "0.1.0",
   "entryPoint": "main",
-  "remoteDependencies": [],
+  "remoteDependencies": [
+    "https://code.jquery.com/jquery-1.11.0.min.js"
+  ],
   "repository": {
     "branch": "master",
     "default_branch": "master",

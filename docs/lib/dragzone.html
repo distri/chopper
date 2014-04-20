@@ -2,7 +2,7 @@
 
 <html>
 <head>
-  <title>index</title>
+  <title>lib/dragzone</title>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
   <link rel="stylesheet" media="all" href="http://strd6.github.io/cdn/parallel/docco.css" />
@@ -18,7 +18,7 @@
               <div class="pilwrap">
                 <a class="pilcrow" href="#section-1">&#182;</a>
               </div>
-              <h1 id="chopper">Chopper</h1>
+              <h1 id="highway-through-the-dragger-zone">Highway through the Dragger Zone</h1>
 
             </div>
             <div class="content"><pre><code class="lang-coffeescript">
@@ -32,35 +32,71 @@
               <div class="pilwrap">
                 <a class="pilcrow" href="#section-2">&#182;</a>
               </div>
-              <p>Chop up images in the chop shop.</p>
+              
+            </div>
+            <div class="content"><pre><code class="lang-coffeescript">module.<span class="function"><span class="title">exports</span></span> = ($element) -&gt;
+  activeItem = <span class="literal">null</span>
+  offset = <span class="literal">null</span>
+
+  $element.bind
+    <span class="string">"touchstart mousedown"</span>: (event) -&gt;          
+      $target = $(event.target)
+      <span class="keyword">if</span> $target.<span class="keyword">is</span> <span class="string">"img"</span>
+        event.preventDefault()
+        activeItem = $target
+
+        startPosition = localPosition(event)
+        itemStart = $target.position()
+
+        offset = subtract itemStart, startPosition
+
+      <span class="keyword">return</span>
+
+    <span class="string">"touchmove mousemove"</span>: (event) -&gt;
+      <span class="keyword">return</span> <span class="keyword">unless</span> activeItem
+
+      activeItem.css add(localPosition(event), offset)
+
+    <span class="string">"touchend mouseup"</span>: (event) -&gt;
+      activeItem = <span class="literal">null</span>
+
+      <span class="keyword">return</span></code></pre>
+</div>
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              <div class="pilwrap">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <h2 id="helpers">Helpers</h2>
 
             </div>
-            <div class="content"><pre><code class="lang-coffeescript">{applyStylesheet} = require <span class="string">"util"</span>
+            <div class="content"><pre><code class="lang-coffeescript">
+</code></pre>
+</div>
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              <div class="pilwrap">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              
+            </div>
+            <div class="content"><pre><code class="lang-coffeescript"><span class="function"><span class="title">localPosition</span></span> = (event) -&gt;
+  top: event.pageY
+  left: event.pageX
 
-drop = require <span class="string">"./lib/drop"</span>
-paste = require <span class="string">"./lib/paste"</span>
+<span class="function"><span class="title">add</span></span> = (a, b) -&gt;
+  top: a.top + b.top
+  left: a.left + b.left
 
-applyStylesheet require <span class="string">"./style"</span>
-
-Dragzone = require <span class="string">"./lib/dragzone"</span>
-
-Dragzone($(<span class="string">"body"</span>))
-
-<span class="function"><span class="title">handler</span></span> = (file) -&gt;
-  img = document.createElement <span class="string">"img"</span>
-  img.src = URL.createObjectURL(file)
-
-  document.body.appendChild img
-
-drop document.querySelector(<span class="string">"html"</span>), handler
-
-$(<span class="string">"body"</span>).<span class="literal">on</span> <span class="string">"move"</span>, <span class="string">"img"</span>, ({startX, startY, deltaX, deltaY}) -&gt;
-  $(<span class="keyword">this</span>).css
-    left: startX + deltaX
-    top: startY + deltaY
-
-paste document,
-  callback: handler</code></pre>
+<span class="function"><span class="title">subtract</span></span> = (a, b) -&gt;
+  top: a.top - b.top
+  left: a.left - b.left</code></pre>
 </div>
         </li>
         
@@ -202,6 +238,6 @@ paste document,
 
 }).call(this);
 
-</script><script src="package.js"></script>
+</script><script src="../package.js"></script>
 </body>
 </html>
