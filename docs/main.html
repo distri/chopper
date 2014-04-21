@@ -35,8 +35,10 @@
               <p>Chop up images in the chop shop.</p>
 
             </div>
-            <div class="content"><pre><code class="lang-coffeescript">require <span class="string">"./duct_tape"</span>
+            <div class="content"><pre><code class="lang-coffeescript">window.focus()
+require <span class="string">"./duct_tape"</span>
 
+Observable = require <span class="string">"observable"</span>
 {applyStylesheet} = require <span class="string">"util"</span>
 
 drop = require <span class="string">"./lib/drop"</span>
@@ -44,9 +46,15 @@ paste = require <span class="string">"./lib/paste"</span>
 
 applyStylesheet require <span class="string">"./style"</span>
 
+global.items = Observable []
+
 Dragzone = require <span class="string">"./lib/dragzone"</span>
 
-Dragzone($(<span class="string">"body"</span>))
+Dragzone($(<span class="string">"body"</span>), items)
+
+template = require <span class="string">"./templates/view"</span>
+document.body.appendChild template
+  items: items
 
 Item = require <span class="string">"./item"</span>
 
@@ -60,47 +68,14 @@ paste document,
 
 S3Load = require <span class="string">"./s3load"</span>
 S3Load(<span class="string">"http://addressable.s3.amazonaws.com/?prefix=uploads"</span>)
-.<span class="keyword">then</span> (items) -&gt;
-  items.map (item) -&gt;
-    <span class="string">"http://addressable.s3.amazonaws.com/<span class="subst">#{item}</span>"</span>
+.<span class="keyword">then</span> (data) -&gt;
+  data.map (datum) -&gt;
+    <span class="string">"http://addressable.s3.amazonaws.com/<span class="subst">#{datum}</span>"</span>
   .map (src) -&gt;
-    add Item
+    items.push Item
       src: src
 
   console.log appData()
-
-<span class="function"><span class="title">addImage</span></span> = (src) -&gt;
-  img = document.createElement <span class="string">"img"</span>
-
-  img.<span class="function"><span class="title">onload</span></span> = -&gt;
-    <span class="keyword">delete</span> <span class="keyword">this</span>.onload
-
-    <span class="keyword">this</span>.data.width(<span class="keyword">this</span>.width)
-    <span class="keyword">this</span>.data.height(<span class="keyword">this</span>.height)
-
-  img.src = src
-
-  document.body.appendChild img
-
-  <span class="keyword">return</span> img
-
-global.items = []
-<span class="function"><span class="title">add</span></span> = (item) -&gt;
-  view = addImage(item.src())
-  view.data = item
-
-  items.push item
-
-  item.src.observe (src) -&gt;
-    view.src = src
-
-  <span class="function"><span class="title">updateCss</span></span> = (css) -&gt;
-    <span class="comment"># console.log css</span>
-    view.style.cssText = css
-  item.css.observe updateCss
-  updateCss()
-
-  <span class="keyword">return</span> item
 
 global.<span class="function"><span class="title">appData</span></span> = -&gt;
   JSON.stringify items.map (item) -&gt;

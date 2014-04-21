@@ -180,17 +180,17 @@
     },
     "main.coffee.md": {
       "path": "main.coffee.md",
-      "content": "Chopper\n=======\n\nChop up images in the chop shop.\n\n    require \"./duct_tape\"\n\n    {applyStylesheet} = require \"util\"\n\n    drop = require \"./lib/drop\"\n    paste = require \"./lib/paste\"\n\n    applyStylesheet require \"./style\"\n\n    Dragzone = require \"./lib/dragzone\"\n\n    Dragzone($(\"body\"))\n    \n    Item = require \"./item\"\n\n    handler = (file) ->\n      addImage URL.createObjectURL(file)\n\n    drop document.querySelector(\"html\"), handler\n\n    paste document,\n      callback: handler\n\n    S3Load = require \"./s3load\"\n    S3Load(\"http://addressable.s3.amazonaws.com/?prefix=uploads\")\n    .then (items) ->\n      items.map (item) ->\n        \"http://addressable.s3.amazonaws.com/#{item}\"\n      .map (src) ->\n        add Item\n          src: src\n\n      console.log appData()\n\n    addImage = (src) ->\n      img = document.createElement \"img\"\n\n      img.onload = ->\n        delete this.onload\n\n        this.data.width(this.width)\n        this.data.height(this.height)\n\n      img.src = src\n\n      document.body.appendChild img\n\n      return img\n\n    global.items = []\n    add = (item) ->\n      view = addImage(item.src())\n      view.data = item\n\n      items.push item\n\n      item.src.observe (src) ->\n        view.src = src\n\n      updateCss = (css) ->\n        # console.log css\n        view.style.cssText = css\n      item.css.observe updateCss\n      updateCss()\n\n      return item\n\n    global.appData = ->\n      JSON.stringify items.map (item) ->\n        item.I\n",
+      "content": "Chopper\n=======\n\nChop up images in the chop shop.\n\n    window.focus()\n    require \"./duct_tape\"\n\n    Observable = require \"observable\"\n    {applyStylesheet} = require \"util\"\n\n    drop = require \"./lib/drop\"\n    paste = require \"./lib/paste\"\n\n    applyStylesheet require \"./style\"\n\n    global.items = Observable []\n\n    Dragzone = require \"./lib/dragzone\"\n\n    Dragzone($(\"body\"), items)\n\n    template = require \"./templates/view\"\n    document.body.appendChild template\n      items: items\n\n    Item = require \"./item\"\n\n    handler = (file) ->\n      addImage URL.createObjectURL(file)\n\n    drop document.querySelector(\"html\"), handler\n\n    paste document,\n      callback: handler\n\n    S3Load = require \"./s3load\"\n    S3Load(\"http://addressable.s3.amazonaws.com/?prefix=uploads\")\n    .then (data) ->\n      data.map (datum) ->\n        \"http://addressable.s3.amazonaws.com/#{datum}\"\n      .map (src) ->\n        items.push Item\n          src: src\n\n      console.log appData()\n\n    global.appData = ->\n      JSON.stringify items.map (item) ->\n        item.I\n",
       "mode": "100644"
     },
     "style.styl": {
       "path": "style.styl",
-      "content": "html\n  height: 100%\n\nbody\n  height: 100%\n  margin: 0\n  position: relative\n  overflow: hidden\n\nimg\n  position: absolute\n\n.point\n  position: absolute\n  width: 5px\n  height: 5px\n  background-color: red\n  z-index: 9000\n  display: none\n",
+      "content": "html\n  height: 100%\n\nbody\n  height: 100%\n  margin: 0\n  position: relative\n  overflow: hidden\n\n.items\n  height: 100%\n\nimg\n  position: absolute\n\n.point\n  position: absolute\n  width: 5px\n  height: 5px\n  background-color: red\n  z-index: 9000\n  display: none\n",
       "mode": "100644"
     },
     "pixie.cson": {
       "path": "pixie.cson",
-      "content": "version: \"0.1.0\"\nremoteDependencies: [\n  \"https://code.jquery.com/jquery-1.11.0.min.js\"\n]\ndependencies:\n  composition: \"distri/compositions:v0.1.1\"\n  observable: \"distri/observable:v0.1.1\"\n  point: \"distri/point:v0.2.0\"\n  util: \"distri/util:v0.1.0\"\n",
+      "content": "version: \"0.1.0\"\nremoteDependencies: [\n  \"https://code.jquery.com/jquery-1.11.0.min.js\"\n]\ndependencies:\n  composition: \"distri/compositions:v0.1.1\"\n  \"jquery-hotkeys\": \"distri/jquery-hotkeys:v0.9.2\"\n  observable: \"distri/observable:v0.1.1\"\n  point: \"distri/point:v0.2.0\"\n  util: \"distri/util:v0.1.0\"\n",
       "mode": "100644"
     },
     "lib/drop.coffee.md": {
@@ -205,7 +205,7 @@
     },
     "lib/dragzone.coffee.md": {
       "path": "lib/dragzone.coffee.md",
-      "content": "Highway through the Dragger Zone\n================================\n\n    Point = require \"point\"\n\n    debugPoint = document.createElement \"div\"\n    debugPoint.className = \"point\"\n    document.body.appendChild debugPoint\n\n    module.exports = ($element) ->\n      activeItem = null\n      offset = null\n      startPosition = null\n      initialRotation = null\n      initialScale = null\n      center = null\n\n      $element.bind\n        \"touchstart mousedown\": (event) ->\n          $target = $(target = event.target)\n          if $target.is \"img\"\n            event.preventDefault()\n\n            activeItem = target.data\n            center = activeItem.center()\n\n            $(debugPoint).css\n              top: center.y\n              left: center.x\n\n            initialScale = null\n            initialRotation = null\n\n            if event.shiftKey\n              initialScale = activeItem.scale()\n            else if event.ctrlKey or event.metaKey\n              initialRotation = activeItem.rotation()\n\n            startPosition = localPosition(event)\n            itemStart = activeItem.position()\n\n            offset = itemStart.subtract startPosition\n\n          return\n\n        \"touchmove mousemove\": (event) ->\n          return unless activeItem\n          p = localPosition(event)\n\n          if initialScale\n            initialVec = startPosition.subtract center\n            currentVec = p.subtract center\n            deltaScale = Point currentVec.x / initialVec.x, currentVec.y / initialVec.y\n\n            activeItem.scale Point deltaScale.x * initialScale.x, deltaScale.y * initialScale.y\n          else if initialRotation?\n            vec = p.subtract center\n            initialVec = startPosition.subtract center\n            deltaRotation = Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x)\n            activeItem.rotation initialRotation + deltaRotation\n          else\n            activeItem.position p.add offset\n\n        \"touchend mouseup\": (event) ->\n          activeItem = null\n\n          return\n\nHelpers\n-------\n\n    localPosition = (event) ->\n      Point event.pageX, event.pageY\n",
+      "content": "Highway through the Dragger Zone\n================================\n\n    Point = require \"point\"\n\n    debugPoint = document.createElement \"div\"\n    debugPoint.className = \"point\"\n    document.body.appendChild debugPoint\n\n\n    module.exports = ($element, items) ->\n      active = false\n      activeItem = null\n      activeView = null\n      offset = null\n      startPosition = null\n      initialRotation = null\n      initialScale = null\n      center = null\n\n      $element.bind\n        \"touchstart mousedown\": (event) ->\n          $target = $(target = event.target)\n          if $target.is \"img\"\n            event.preventDefault()\n\n            active = true\n            activeView = target\n            activeItem = items()[$(\".items img\").index(target)]\n            center = activeItem.center()\n\n            $(debugPoint).css\n              top: center.y\n              left: center.x\n\n            initialScale = null\n            initialRotation = null\n\n            if event.shiftKey\n              initialScale = activeItem.scale()\n            else if event.ctrlKey or event.metaKey\n              initialRotation = activeItem.rotation()\n\n            startPosition = localPosition(event)\n            itemStart = activeItem.position()\n\n            offset = itemStart.subtract startPosition\n\n          return\n\n        \"touchmove mousemove\": (event) ->\n          return unless active\n          p = localPosition(event)\n\n          if initialScale\n            initialVec = startPosition.subtract center\n            currentVec = p.subtract center\n            deltaScale = Point currentVec.x / initialVec.x, currentVec.y / initialVec.y\n\n            activeItem.scale Point deltaScale.x * initialScale.x, deltaScale.y * initialScale.y\n          else if initialRotation?\n            vec = p.subtract center\n            initialVec = startPosition.subtract center\n            deltaRotation = Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x)\n            activeItem.rotation initialRotation + deltaRotation\n          else\n            activeItem.position p.add offset\n\n        \"touchend mouseup\": (event) ->\n          active = false\n\n          return\n\nHelpers\n-------\n\n    localPosition = (event) ->\n      Point event.pageX, event.pageY\n",
       "mode": "100644"
     },
     "s3load.coffee.md": {
@@ -215,29 +215,44 @@
     },
     "item.coffee.md": {
       "path": "item.coffee.md",
-      "content": "Item Model\n==========\n\n    Composition = require \"composition\"\n    Observable = require \"observable\"\n    Point = require \"point\"\n    {defaults} = require \"util\"\n\n    module.exports = (I={}) ->\n      defaults I,\n        position: Point(0, 0)\n        scale: Point(1, 1)\n        rotation: 0\n        width: 1\n        height: 1\n\n      self = Composition(I).extend\n        center: ->\n          size = Point(self.width(), self.height()).scale(0.5)\n\n          self.position().add(size)\n\n        scaledSize: ->\n          self.scale().scale(self.width(), self.height())\n\n      self.attrObservable \"position\", \"rotation\", \"scale\", \"src\"\n      self.attrAccessor \"width\", \"height\"\n\n      translation = ->\n        {x, y} = self.position()\n\n        \"translate(#{x}px, #{y}px)\"\n\n      scale = ->\n        {x, y} = self.scale()\n        \n        \"scale(#{x},#{y})\"\n\n      if navigator.userAgent.match /WebKit/\n        prefix = \"-webkit-\"\n      else\n        prefix = \"\"\n\n      self.css = Observable ->\n        \"#{prefix}transform: #{translation()} #{scale()} rotate(#{self.rotation()}rad);\"\n\n      return self\n",
+      "content": "Item Model\n==========\n\n    Composition = require \"composition\"\n    Observable = require \"observable\"\n    Point = require \"point\"\n    Size = require \"./lib/size\"\n    {extend, defaults} = require \"util\"\n\n    module.exports = (I={}) ->\n      defaults I,\n        position: Point(0, 0)\n        scale: Point(1, 1)\n        rotation: 0\n        size: Size(0, 0)\n\n      self = Composition(I).extend\n        copy: ->\n          extend {}, I\n        center: ->\n          size = Point(1, 1).scale(self.size()).scale(0.5)\n\n          self.position().add(size)\n\n      self.attrObservable \"position\", \"rotation\", \"scale\", \"size\", \"src\"\n\n      translation = ->\n        {x, y} = self.position()\n\n        \"translate(#{x}px, #{y}px)\"\n\n      scale = ->\n        {x, y} = self.scale()\n        \n        \"scale(#{x},#{y})\"\n\n      if navigator.userAgent.match /WebKit/\n        prefix = \"-webkit-\"\n      else\n        prefix = \"\"\n\n      autosize = (src) ->\n        img = document.createElement \"img\"\n        img.onload = ->\n          self.size this\n\n        img.src = src\n\n      # TODO: observe src changes\n      autosize self.src()\n\n      self.css = Observable ->\n        \"#{prefix}transform: #{translation()} #{scale()} rotate(#{self.rotation()}rad);\"\n\n      return self\n",
       "mode": "100644"
     },
     "duct_tape.coffee.md": {
       "path": "duct_tape.coffee.md",
-      "content": "Duct Tape\n=========\n\n    Point = require \"point\"\n\n    Point::scale = (x, y) ->\n      y ?= x\n\n      Point(@x * x, @y * y)\n\n    Point::abs = ->\n      Point(Math.abs(@x), Math.abs(@y))\n",
+      "content": "Duct Tape\n=========\n\n    global.Observable = require \"observable\"\n    Point = require \"point\"\n\n    Point::scale = (x, y) ->\n      y ?= x\n\n      Point(@x * x, @y * y)\n\n    Point::abs = ->\n      Point(Math.abs(@x), Math.abs(@y))\n",
+      "mode": "100644"
+    },
+    "hotkey_actions.coffee.md": {
+      "path": "hotkey_actions.coffee.md",
+      "content": "Hotkey Actions\n==============\n\n    require \"jquery-hotkeys\"\n\n    Item = require \"./item\"\n\n    module.exports = (state) ->\n      Object.keys(bindings).forEach (hotkey) ->\n        $(document).on \"keydown\", null, hotkey, ->\n          actions[bindings[hotkey]](state())\n\n    bindings =\n      pageup: \"raiseToTop\"\n      delete: \"delete\"\n\n    actions =\n      raiseToTop: ({item, view, items}) ->\n        items.push items.remove item\n      delete: ({item, view, items}) ->\n        items.remove item\n      duplicate: ({item, view, items}) ->\n        newItem = item.copy()\n        newItem.position newItem.position().add(Point(20, 20))\n        items.push newItem\n",
+      "mode": "100644"
+    },
+    "templates/view.haml": {
+      "path": "templates/view.haml",
+      "content": ".items\n  - each @items, (item) ->\n    %img(src=item.src style=item.css)\n",
+      "mode": "100644"
+    },
+    "lib/size.coffee.md": {
+      "path": "lib/size.coffee.md",
+      "content": "Size\n====\n\nA simple 2d extent.\n\n    Size = (width, height) ->\n      if typeof width is \"object\"\n        {width, height} = width\n\n      width: width\n      height: height\n      __proto__: Size.prototype\n\n    Size.prototype =\n      scale: (scalar) ->\n        Size(@width * scalar, @height * scalar)\n    \n      toString: ->\n        \"Size(#{@width}, #{@height})\"\n    \n      max: (otherSize) ->\n        Size(\n          Math.max(@width, otherSize.width)\n          Math.max(@height, otherSize.height)\n        )\n    \n      each: (iterator) ->\n        [0...@height].forEach (y) ->\n          [0...@width].forEach (x) ->\n            iterator(x, y)\n\n    module.exports = Size\n",
       "mode": "100644"
     }
   },
   "distribution": {
     "main": {
       "path": "main",
-      "content": "(function() {\n  var Dragzone, Item, S3Load, add, addImage, applyStylesheet, drop, handler, paste;\n\n  require(\"./duct_tape\");\n\n  applyStylesheet = require(\"util\").applyStylesheet;\n\n  drop = require(\"./lib/drop\");\n\n  paste = require(\"./lib/paste\");\n\n  applyStylesheet(require(\"./style\"));\n\n  Dragzone = require(\"./lib/dragzone\");\n\n  Dragzone($(\"body\"));\n\n  Item = require(\"./item\");\n\n  handler = function(file) {\n    return addImage(URL.createObjectURL(file));\n  };\n\n  drop(document.querySelector(\"html\"), handler);\n\n  paste(document, {\n    callback: handler\n  });\n\n  S3Load = require(\"./s3load\");\n\n  S3Load(\"http://addressable.s3.amazonaws.com/?prefix=uploads\").then(function(items) {\n    items.map(function(item) {\n      return \"http://addressable.s3.amazonaws.com/\" + item;\n    }).map(function(src) {\n      return add(Item({\n        src: src\n      }));\n    });\n    return console.log(appData());\n  });\n\n  addImage = function(src) {\n    var img;\n    img = document.createElement(\"img\");\n    img.onload = function() {\n      delete this.onload;\n      this.data.width(this.width);\n      return this.data.height(this.height);\n    };\n    img.src = src;\n    document.body.appendChild(img);\n    return img;\n  };\n\n  global.items = [];\n\n  add = function(item) {\n    var updateCss, view;\n    view = addImage(item.src());\n    view.data = item;\n    items.push(item);\n    item.src.observe(function(src) {\n      return view.src = src;\n    });\n    updateCss = function(css) {\n      return view.style.cssText = css;\n    };\n    item.css.observe(updateCss);\n    updateCss();\n    return item;\n  };\n\n  global.appData = function() {\n    return JSON.stringify(items.map(function(item) {\n      return item.I;\n    }));\n  };\n\n}).call(this);\n",
+      "content": "(function() {\n  var Dragzone, Item, Observable, S3Load, applyStylesheet, drop, handler, paste, template;\n\n  window.focus();\n\n  require(\"./duct_tape\");\n\n  Observable = require(\"observable\");\n\n  applyStylesheet = require(\"util\").applyStylesheet;\n\n  drop = require(\"./lib/drop\");\n\n  paste = require(\"./lib/paste\");\n\n  applyStylesheet(require(\"./style\"));\n\n  global.items = Observable([]);\n\n  Dragzone = require(\"./lib/dragzone\");\n\n  Dragzone($(\"body\"), items);\n\n  template = require(\"./templates/view\");\n\n  document.body.appendChild(template({\n    items: items\n  }));\n\n  Item = require(\"./item\");\n\n  handler = function(file) {\n    return addImage(URL.createObjectURL(file));\n  };\n\n  drop(document.querySelector(\"html\"), handler);\n\n  paste(document, {\n    callback: handler\n  });\n\n  S3Load = require(\"./s3load\");\n\n  S3Load(\"http://addressable.s3.amazonaws.com/?prefix=uploads\").then(function(data) {\n    data.map(function(datum) {\n      return \"http://addressable.s3.amazonaws.com/\" + datum;\n    }).map(function(src) {\n      return items.push(Item({\n        src: src\n      }));\n    });\n    return console.log(appData());\n  });\n\n  global.appData = function() {\n    return JSON.stringify(items.map(function(item) {\n      return item.I;\n    }));\n  };\n\n}).call(this);\n",
       "type": "blob"
     },
     "style": {
       "path": "style",
-      "content": "module.exports = \"html {\\n  height: 100%;\\n}\\n\\nbody {\\n  height: 100%;\\n  margin: 0;\\n  position: relative;\\n  overflow: hidden;\\n}\\n\\nimg {\\n  position: absolute;\\n}\\n\\n.point {\\n  position: absolute;\\n  width: 5px;\\n  height: 5px;\\n  background-color: red;\\n  z-index: 9000;\\n  display: none;\\n}\";",
+      "content": "module.exports = \"html {\\n  height: 100%;\\n}\\n\\nbody {\\n  height: 100%;\\n  margin: 0;\\n  position: relative;\\n  overflow: hidden;\\n}\\n\\n.items {\\n  height: 100%;\\n}\\n\\nimg {\\n  position: absolute;\\n}\\n\\n.point {\\n  position: absolute;\\n  width: 5px;\\n  height: 5px;\\n  background-color: red;\\n  z-index: 9000;\\n  display: none;\\n}\";",
       "type": "blob"
     },
     "pixie": {
       "path": "pixie",
-      "content": "module.exports = {\"version\":\"0.1.0\",\"remoteDependencies\":[\"https://code.jquery.com/jquery-1.11.0.min.js\"],\"dependencies\":{\"composition\":\"distri/compositions:v0.1.1\",\"observable\":\"distri/observable:v0.1.1\",\"point\":\"distri/point:v0.2.0\",\"util\":\"distri/util:v0.1.0\"}};",
+      "content": "module.exports = {\"version\":\"0.1.0\",\"remoteDependencies\":[\"https://code.jquery.com/jquery-1.11.0.min.js\"],\"dependencies\":{\"composition\":\"distri/compositions:v0.1.1\",\"jquery-hotkeys\":\"distri/jquery-hotkeys:v0.9.2\",\"observable\":\"distri/observable:v0.1.1\",\"point\":\"distri/point:v0.2.0\",\"util\":\"distri/util:v0.1.0\"}};",
       "type": "blob"
     },
     "lib/drop": {
@@ -252,7 +267,7 @@
     },
     "lib/dragzone": {
       "path": "lib/dragzone",
-      "content": "(function() {\n  var Point, debugPoint, localPosition;\n\n  Point = require(\"point\");\n\n  debugPoint = document.createElement(\"div\");\n\n  debugPoint.className = \"point\";\n\n  document.body.appendChild(debugPoint);\n\n  module.exports = function($element) {\n    var activeItem, center, initialRotation, initialScale, offset, startPosition;\n    activeItem = null;\n    offset = null;\n    startPosition = null;\n    initialRotation = null;\n    initialScale = null;\n    center = null;\n    return $element.bind({\n      \"touchstart mousedown\": function(event) {\n        var $target, itemStart, target;\n        $target = $(target = event.target);\n        if ($target.is(\"img\")) {\n          event.preventDefault();\n          activeItem = target.data;\n          center = activeItem.center();\n          $(debugPoint).css({\n            top: center.y,\n            left: center.x\n          });\n          initialScale = null;\n          initialRotation = null;\n          if (event.shiftKey) {\n            initialScale = activeItem.scale();\n          } else if (event.ctrlKey || event.metaKey) {\n            initialRotation = activeItem.rotation();\n          }\n          startPosition = localPosition(event);\n          itemStart = activeItem.position();\n          offset = itemStart.subtract(startPosition);\n        }\n      },\n      \"touchmove mousemove\": function(event) {\n        var currentVec, deltaRotation, deltaScale, initialVec, p, vec;\n        if (!activeItem) {\n          return;\n        }\n        p = localPosition(event);\n        if (initialScale) {\n          initialVec = startPosition.subtract(center);\n          currentVec = p.subtract(center);\n          deltaScale = Point(currentVec.x / initialVec.x, currentVec.y / initialVec.y);\n          return activeItem.scale(Point(deltaScale.x * initialScale.x, deltaScale.y * initialScale.y));\n        } else if (initialRotation != null) {\n          vec = p.subtract(center);\n          initialVec = startPosition.subtract(center);\n          deltaRotation = Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x);\n          return activeItem.rotation(initialRotation + deltaRotation);\n        } else {\n          return activeItem.position(p.add(offset));\n        }\n      },\n      \"touchend mouseup\": function(event) {\n        activeItem = null;\n      }\n    });\n  };\n\n  localPosition = function(event) {\n    return Point(event.pageX, event.pageY);\n  };\n\n}).call(this);\n",
+      "content": "(function() {\n  var Point, debugPoint, localPosition;\n\n  Point = require(\"point\");\n\n  debugPoint = document.createElement(\"div\");\n\n  debugPoint.className = \"point\";\n\n  document.body.appendChild(debugPoint);\n\n  module.exports = function($element, items) {\n    var active, activeItem, activeView, center, initialRotation, initialScale, offset, startPosition;\n    active = false;\n    activeItem = null;\n    activeView = null;\n    offset = null;\n    startPosition = null;\n    initialRotation = null;\n    initialScale = null;\n    center = null;\n    return $element.bind({\n      \"touchstart mousedown\": function(event) {\n        var $target, itemStart, target;\n        $target = $(target = event.target);\n        if ($target.is(\"img\")) {\n          event.preventDefault();\n          active = true;\n          activeView = target;\n          activeItem = items()[$(\".items img\").index(target)];\n          center = activeItem.center();\n          $(debugPoint).css({\n            top: center.y,\n            left: center.x\n          });\n          initialScale = null;\n          initialRotation = null;\n          if (event.shiftKey) {\n            initialScale = activeItem.scale();\n          } else if (event.ctrlKey || event.metaKey) {\n            initialRotation = activeItem.rotation();\n          }\n          startPosition = localPosition(event);\n          itemStart = activeItem.position();\n          offset = itemStart.subtract(startPosition);\n        }\n      },\n      \"touchmove mousemove\": function(event) {\n        var currentVec, deltaRotation, deltaScale, initialVec, p, vec;\n        if (!active) {\n          return;\n        }\n        p = localPosition(event);\n        if (initialScale) {\n          initialVec = startPosition.subtract(center);\n          currentVec = p.subtract(center);\n          deltaScale = Point(currentVec.x / initialVec.x, currentVec.y / initialVec.y);\n          return activeItem.scale(Point(deltaScale.x * initialScale.x, deltaScale.y * initialScale.y));\n        } else if (initialRotation != null) {\n          vec = p.subtract(center);\n          initialVec = startPosition.subtract(center);\n          deltaRotation = Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x);\n          return activeItem.rotation(initialRotation + deltaRotation);\n        } else {\n          return activeItem.position(p.add(offset));\n        }\n      },\n      \"touchend mouseup\": function(event) {\n        active = false;\n      }\n    });\n  };\n\n  localPosition = function(event) {\n    return Point(event.pageX, event.pageY);\n  };\n\n}).call(this);\n",
       "type": "blob"
     },
     "s3load": {
@@ -262,12 +277,32 @@
     },
     "item": {
       "path": "item",
-      "content": "(function() {\n  var Composition, Observable, Point, defaults;\n\n  Composition = require(\"composition\");\n\n  Observable = require(\"observable\");\n\n  Point = require(\"point\");\n\n  defaults = require(\"util\").defaults;\n\n  module.exports = function(I) {\n    var prefix, scale, self, translation;\n    if (I == null) {\n      I = {};\n    }\n    defaults(I, {\n      position: Point(0, 0),\n      scale: Point(1, 1),\n      rotation: 0,\n      width: 1,\n      height: 1\n    });\n    self = Composition(I).extend({\n      center: function() {\n        var size;\n        size = Point(self.width(), self.height()).scale(0.5);\n        return self.position().add(size);\n      },\n      scaledSize: function() {\n        return self.scale().scale(self.width(), self.height());\n      }\n    });\n    self.attrObservable(\"position\", \"rotation\", \"scale\", \"src\");\n    self.attrAccessor(\"width\", \"height\");\n    translation = function() {\n      var x, y, _ref;\n      _ref = self.position(), x = _ref.x, y = _ref.y;\n      return \"translate(\" + x + \"px, \" + y + \"px)\";\n    };\n    scale = function() {\n      var x, y, _ref;\n      _ref = self.scale(), x = _ref.x, y = _ref.y;\n      return \"scale(\" + x + \",\" + y + \")\";\n    };\n    if (navigator.userAgent.match(/WebKit/)) {\n      prefix = \"-webkit-\";\n    } else {\n      prefix = \"\";\n    }\n    self.css = Observable(function() {\n      return \"\" + prefix + \"transform: \" + (translation()) + \" \" + (scale()) + \" rotate(\" + (self.rotation()) + \"rad);\";\n    });\n    return self;\n  };\n\n}).call(this);\n",
+      "content": "(function() {\n  var Composition, Observable, Point, Size, defaults, extend, _ref;\n\n  Composition = require(\"composition\");\n\n  Observable = require(\"observable\");\n\n  Point = require(\"point\");\n\n  Size = require(\"./lib/size\");\n\n  _ref = require(\"util\"), extend = _ref.extend, defaults = _ref.defaults;\n\n  module.exports = function(I) {\n    var autosize, prefix, scale, self, translation;\n    if (I == null) {\n      I = {};\n    }\n    defaults(I, {\n      position: Point(0, 0),\n      scale: Point(1, 1),\n      rotation: 0,\n      size: Size(0, 0)\n    });\n    self = Composition(I).extend({\n      copy: function() {\n        return extend({}, I);\n      },\n      center: function() {\n        var size;\n        size = Point(1, 1).scale(self.size()).scale(0.5);\n        return self.position().add(size);\n      }\n    });\n    self.attrObservable(\"position\", \"rotation\", \"scale\", \"size\", \"src\");\n    translation = function() {\n      var x, y, _ref1;\n      _ref1 = self.position(), x = _ref1.x, y = _ref1.y;\n      return \"translate(\" + x + \"px, \" + y + \"px)\";\n    };\n    scale = function() {\n      var x, y, _ref1;\n      _ref1 = self.scale(), x = _ref1.x, y = _ref1.y;\n      return \"scale(\" + x + \",\" + y + \")\";\n    };\n    if (navigator.userAgent.match(/WebKit/)) {\n      prefix = \"-webkit-\";\n    } else {\n      prefix = \"\";\n    }\n    autosize = function(src) {\n      var img;\n      img = document.createElement(\"img\");\n      img.onload = function() {\n        return self.size(this);\n      };\n      return img.src = src;\n    };\n    autosize(self.src());\n    self.css = Observable(function() {\n      return \"\" + prefix + \"transform: \" + (translation()) + \" \" + (scale()) + \" rotate(\" + (self.rotation()) + \"rad);\";\n    });\n    return self;\n  };\n\n}).call(this);\n",
       "type": "blob"
     },
     "duct_tape": {
       "path": "duct_tape",
-      "content": "(function() {\n  var Point;\n\n  Point = require(\"point\");\n\n  Point.prototype.scale = function(x, y) {\n    if (y == null) {\n      y = x;\n    }\n    return Point(this.x * x, this.y * y);\n  };\n\n  Point.prototype.abs = function() {\n    return Point(Math.abs(this.x), Math.abs(this.y));\n  };\n\n}).call(this);\n",
+      "content": "(function() {\n  var Point;\n\n  global.Observable = require(\"observable\");\n\n  Point = require(\"point\");\n\n  Point.prototype.scale = function(x, y) {\n    if (y == null) {\n      y = x;\n    }\n    return Point(this.x * x, this.y * y);\n  };\n\n  Point.prototype.abs = function() {\n    return Point(Math.abs(this.x), Math.abs(this.y));\n  };\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "hotkey_actions": {
+      "path": "hotkey_actions",
+      "content": "(function() {\n  var Item, actions, bindings;\n\n  require(\"jquery-hotkeys\");\n\n  Item = require(\"./item\");\n\n  module.exports = function(state) {\n    return Object.keys(bindings).forEach(function(hotkey) {\n      return $(document).on(\"keydown\", null, hotkey, function() {\n        return actions[bindings[hotkey]](state());\n      });\n    });\n  };\n\n  bindings = {\n    pageup: \"raiseToTop\",\n    \"delete\": \"delete\"\n  };\n\n  actions = {\n    raiseToTop: function(_arg) {\n      var item, items, view;\n      item = _arg.item, view = _arg.view, items = _arg.items;\n      return items.push(items.remove(item));\n    },\n    \"delete\": function(_arg) {\n      var item, items, view;\n      item = _arg.item, view = _arg.view, items = _arg.items;\n      return items.remove(item);\n    },\n    duplicate: function(_arg) {\n      var item, items, newItem, view;\n      item = _arg.item, view = _arg.view, items = _arg.items;\n      newItem = item.copy();\n      newItem.position(newItem.position().add(Point(20, 20)));\n      return items.push(newItem);\n    }\n  };\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "templates/view": {
+      "path": "templates/view",
+      "content": "Runtime = require(\"/_lib/hamljr_runtime\");\n\nmodule.exports = (function(data) {\n  return (function() {\n    var __runtime;\n    __runtime = Runtime(this);\n    __runtime.push(document.createDocumentFragment());\n    __runtime.push(document.createElement(\"div\"));\n    __runtime.classes(\"items\");\n    __runtime.each(this.items, function(item) {\n      __runtime.push(document.createElement(\"img\"));\n      __runtime.attribute(\"src\", item.src);\n      __runtime.attribute(\"style\", item.css);\n      return __runtime.pop();\n    });\n    __runtime.pop();\n    return __runtime.pop();\n  }).call(data);\n});\n",
+      "type": "blob"
+    },
+    "lib/size": {
+      "path": "lib/size",
+      "content": "(function() {\n  var Size;\n\n  Size = function(width, height) {\n    var _ref;\n    if (typeof width === \"object\") {\n      _ref = width, width = _ref.width, height = _ref.height;\n    }\n    return {\n      width: width,\n      height: height,\n      __proto__: Size.prototype\n    };\n  };\n\n  Size.prototype = {\n    scale: function(scalar) {\n      return Size(this.width * scalar, this.height * scalar);\n    },\n    toString: function() {\n      return \"Size(\" + this.width + \", \" + this.height + \")\";\n    },\n    max: function(otherSize) {\n      return Size(Math.max(this.width, otherSize.width), Math.max(this.height, otherSize.height));\n    },\n    each: function(iterator) {\n      var _i, _ref, _results;\n      return (function() {\n        _results = [];\n        for (var _i = 0, _ref = this.height; 0 <= _ref ? _i < _ref : _i > _ref; 0 <= _ref ? _i++ : _i--){ _results.push(_i); }\n        return _results;\n      }).apply(this).forEach(function(y) {\n        var _i, _ref, _results;\n        return (function() {\n          _results = [];\n          for (var _i = 0, _ref = this.width; 0 <= _ref ? _i < _ref : _i > _ref; 0 <= _ref ? _i++ : _i--){ _results.push(_i); }\n          return _results;\n        }).apply(this).forEach(function(x) {\n          return iterator(x, y);\n        });\n      });\n    }\n  };\n\n  module.exports = Size;\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "_lib/hamljr_runtime": {
+      "path": "_lib/hamljr_runtime",
+      "content": "(function() {\n  var Runtime, dataName, document,\n    __slice = [].slice;\n\n  dataName = \"__hamlJR_data\";\n\n  if (typeof window !== \"undefined\" && window !== null) {\n    document = window.document;\n  } else {\n    document = global.document;\n  }\n\n  Runtime = function(context) {\n    var append, bindObservable, classes, id, lastParent, observeAttribute, observeText, pop, push, render, self, stack, top;\n    stack = [];\n    lastParent = function() {\n      var element, i;\n      i = stack.length - 1;\n      while ((element = stack[i]) && element.nodeType === 11) {\n        i -= 1;\n      }\n      return element;\n    };\n    top = function() {\n      return stack[stack.length - 1];\n    };\n    append = function(child) {\n      var _ref;\n      if ((_ref = top()) != null) {\n        _ref.appendChild(child);\n      }\n      return child;\n    };\n    push = function(child) {\n      return stack.push(child);\n    };\n    pop = function() {\n      return append(stack.pop());\n    };\n    render = function(child) {\n      push(child);\n      return pop();\n    };\n    bindObservable = function(element, value, update) {\n      var observable, observe, unobserve;\n      if (typeof Observable === \"undefined\" || Observable === null) {\n        update(value);\n        return;\n      }\n      observable = Observable(value);\n      observe = function() {\n        observable.observe(update);\n        return update(observable());\n      };\n      unobserve = function() {\n        return observable.stopObserving(update);\n      };\n      element.addEventListener(\"DOMNodeInserted\", observe, true);\n      element.addEventListener(\"DOMNodeRemoved\", unobserve, true);\n      return element;\n    };\n    id = function() {\n      var element, sources, update, value;\n      sources = 1 <= arguments.length ? __slice.call(arguments, 0) : [];\n      element = top();\n      update = function(newValue) {\n        if (typeof newValue === \"function\") {\n          newValue = newValue();\n        }\n        return element.id = newValue;\n      };\n      value = function() {\n        var possibleValues;\n        possibleValues = sources.map(function(source) {\n          if (typeof source === \"function\") {\n            return source();\n          } else {\n            return source;\n          }\n        }).filter(function(idValue) {\n          return idValue != null;\n        });\n        return possibleValues[possibleValues.length - 1];\n      };\n      return bindObservable(element, value, update);\n    };\n    classes = function() {\n      var element, sources, update, value;\n      sources = 1 <= arguments.length ? __slice.call(arguments, 0) : [];\n      element = top();\n      update = function(newValue) {\n        if (typeof newValue === \"function\") {\n          newValue = newValue();\n        }\n        return element.className = newValue;\n      };\n      value = function() {\n        var possibleValues;\n        possibleValues = sources.map(function(source) {\n          if (typeof source === \"function\") {\n            return source();\n          } else {\n            return source;\n          }\n        }).filter(function(sourceValue) {\n          return sourceValue != null;\n        });\n        return possibleValues.join(\" \");\n      };\n      return bindObservable(element, value, update);\n    };\n    observeAttribute = function(name, value) {\n      var element, update;\n      element = top();\n      if ((name === \"value\") && (typeof value === \"function\")) {\n        element.value = value();\n        element.onchange = function() {\n          return value(element.value);\n        };\n        if (value.observe) {\n          value.observe(function(newValue) {\n            return element.value = newValue;\n          });\n        }\n      } else {\n        update = function(newValue) {\n          return element.setAttribute(name, newValue);\n        };\n        bindObservable(element, value, update);\n      }\n      return element;\n    };\n    observeText = function(value) {\n      var element, update;\n      switch (value != null ? value.nodeType : void 0) {\n        case 1:\n        case 3:\n        case 11:\n          render(value);\n          return;\n      }\n      element = document.createTextNode('');\n      update = function(newValue) {\n        return element.nodeValue = newValue;\n      };\n      bindObservable(element, value, update);\n      return render(element);\n    };\n    self = {\n      push: push,\n      pop: pop,\n      id: id,\n      classes: classes,\n      attribute: observeAttribute,\n      text: observeText,\n      filter: function(name, content) {},\n      each: function(items, fn) {\n        var elements, parent, replace;\n        items = Observable(items);\n        elements = [];\n        parent = lastParent();\n        items.observe(function(newItems) {\n          return replace(elements, newItems);\n        });\n        replace = function(oldElements, items) {\n          var firstElement;\n          if (oldElements) {\n            firstElement = oldElements[0];\n            parent = (firstElement != null ? firstElement.parentElement : void 0) || parent;\n            elements = items.map(function(item, index, array) {\n              var element;\n              element = fn.call(item, item, index, array);\n              element[dataName] = item;\n              parent.insertBefore(element, firstElement);\n              return element;\n            });\n            return oldElements.forEach(function(element) {\n              return element.remove();\n            });\n          } else {\n            return elements = items.map(function(item, index, array) {\n              var element;\n              element = fn.call(item, item, index, array);\n              element[dataName] = item;\n              return element;\n            });\n          }\n        };\n        return replace(null, items);\n      },\n      \"with\": function(item, fn) {\n        var element, replace, value;\n        element = null;\n        item = Observable(item);\n        item.observe(function(newValue) {\n          return replace(element, newValue);\n        });\n        value = item();\n        replace = function(oldElement, value) {\n          var parent;\n          element = fn.call(value);\n          element[dataName] = item;\n          if (oldElement) {\n            parent = oldElement.parentElement;\n            parent.insertBefore(element, oldElement);\n            return oldElement.remove();\n          } else {\n\n          }\n        };\n        return replace(element, value);\n      },\n      on: function(eventName, fn) {\n        var element;\n        element = lastParent();\n        if (eventName === \"change\") {\n          switch (element.nodeName) {\n            case \"SELECT\":\n              element[\"on\" + eventName] = function() {\n                var selectedOption;\n                selectedOption = this.options[this.selectedIndex];\n                return fn(selectedOption[dataName]);\n              };\n              if (fn.observe) {\n                return fn.observe(function(newValue) {\n                  return Array.prototype.forEach.call(element.options, function(option, index) {\n                    if (option[dataName] === newValue) {\n                      return element.selectedIndex = index;\n                    }\n                  });\n                });\n              }\n              break;\n            default:\n              element[\"on\" + eventName] = function() {\n                return fn(element.value);\n              };\n              if (fn.observe) {\n                return fn.observe(function(newValue) {\n                  return element.value = newValue;\n                });\n              }\n          }\n        } else {\n          return element[\"on\" + eventName] = function(event) {\n            return fn.call(context, event);\n          };\n        }\n      }\n    };\n    return self;\n  };\n\n  module.exports = Runtime;\n\n}).call(this);\n",
       "type": "blob"
     }
   },
@@ -800,6 +835,181 @@
           "dependencies": {}
         }
       }
+    },
+    "jquery-hotkeys": {
+      "source": {
+        "LICENSE": {
+          "path": "LICENSE",
+          "mode": "100644",
+          "content": "The MIT License (MIT)\n\nCopyright (c) 2013 Daniel X Moore\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of\nthis software and associated documentation files (the \"Software\"), to deal in\nthe Software without restriction, including without limitation the rights to\nuse, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of\nthe Software, and to permit persons to whom the Software is furnished to do so,\nsubject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS\nFOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR\nCOPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER\nIN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN\nCONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n",
+          "type": "blob"
+        },
+        "README.md": {
+          "path": "README.md",
+          "mode": "100644",
+          "content": "jquery.hotkeys\n==============\n\njQuery hotkeys plugin\n",
+          "type": "blob"
+        },
+        "hotkeys.coffee.md": {
+          "path": "hotkeys.coffee.md",
+          "mode": "100644",
+          "content": "jQuery Hotkeys Plugin\n=====================\n\nCopyright 2010, John Resig\nDual licensed under the MIT or GPL Version 2 licenses.\n\nBased upon the plugin by Tzury Bar Yochay:\nhttp://github.com/tzuryby/hotkeys\n\nOriginal idea by:\nBinny V A, http://www.openjs.com/scripts/events/keyboard_shortcuts/\n\n    if jQuery?\n      ((jQuery) ->\n        isTextAcceptingInput = (element) ->\n          /textarea|select/i.test(element.nodeName) or element.type is \"text\" or element.type is \"password\"\n\n        isFunctionKey = (event) ->\n          (event.type != \"keypress\") && (112 <= event.which <= 123)\n\n        jQuery.hotkeys =\n          version: \"0.9.0\"\n\n          specialKeys:\n            8: \"backspace\"\n            9: \"tab\"\n            13: \"return\"\n            16: \"shift\"\n            17: \"ctrl\"\n            18: \"alt\"\n            19: \"pause\"\n            20: \"capslock\"\n            27: \"esc\"\n            32: \"space\"\n            33: \"pageup\"\n            34: \"pagedown\"\n            35: \"end\"\n            36: \"home\"\n            37: \"left\"\n            38: \"up\"\n            39: \"right\"\n            40: \"down\"\n            45: \"insert\"\n            46: \"del\"\n            96: \"0\"\n            97: \"1\"\n            98: \"2\"\n            99: \"3\"\n            100: \"4\"\n            101: \"5\"\n            102: \"6\"\n            103: \"7\"\n            104: \"8\"\n            105: \"9\"\n            106: \"*\"\n            107: \"+\"\n            109: \"-\"\n            110: \".\"\n            111 : \"/\"\n            112: \"f1\"\n            113: \"f2\"\n            114: \"f3\"\n            115: \"f4\"\n            116: \"f5\"\n            117: \"f6\"\n            118: \"f7\"\n            119: \"f8\"\n            120: \"f9\"\n            121: \"f10\"\n            122: \"f11\"\n            123: \"f12\"\n            144: \"numlock\"\n            145: \"scroll\"\n            186: \";\"\n            187: \"=\"\n            188: \",\"\n            189: \"-\"\n            190: \".\"\n            191: \"/\"\n            219: \"[\"\n            220: \"\\\\\"\n            221: \"]\"\n            222: \"'\"\n            224: \"meta\"\n\n          shiftNums:\n            \"`\": \"~\"\n            \"1\": \"!\"\n            \"2\": \"@\"\n            \"3\": \"#\"\n            \"4\": \"$\"\n            \"5\": \"%\"\n            \"6\": \"^\"\n            \"7\": \"&\"\n            \"8\": \"*\"\n            \"9\": \"(\"\n            \"0\": \")\"\n            \"-\": \"_\"\n            \"=\": \"+\"\n            \";\": \":\"\n            \"'\": \"\\\"\"\n            \",\": \"<\"\n            \".\": \">\"\n            \"/\": \"?\"\n            \"\\\\\": \"|\"\n\n        keyHandler = (handleObj) ->\n          # Only care when a possible input has been specified\n          if typeof handleObj.data != \"string\"\n            return\n\n          origHandler = handleObj.handler\n          keys = handleObj.data.toLowerCase().split(\" \")\n\n          handleObj.handler = (event) ->\n            # Keypress represents characters, not special keys\n            special = event.type != \"keypress\" && jQuery.hotkeys.specialKeys[ event.which ]\n            character = String.fromCharCode( event.which ).toLowerCase()\n            modif = \"\"\n            possible = {}\n            target = event.target\n\n            # check combinations (alt|ctrl|shift+anything)\n            if event.altKey && special != \"alt\"\n              modif += \"alt+\"\n\n            if event.ctrlKey && special != \"ctrl\"\n              modif += \"ctrl+\"\n\n            # TODO: Need to make sure this works consistently across platforms\n            if event.metaKey && !event.ctrlKey && special != \"meta\"\n              modif += \"meta+\"\n\n            # Don't fire in text-accepting inputs that we didn't directly bind to\n            # unless a non-shift modifier key or function key is pressed\n            unless this == target\n              if isTextAcceptingInput(target) && !modif && !isFunctionKey(event)\n                return\n\n            if event.shiftKey && special != \"shift\"\n              modif += \"shift+\"\n\n            if special\n              possible[ modif + special ] = true\n            else\n              possible[ modif + character ] = true\n              possible[ modif + jQuery.hotkeys.shiftNums[ character ] ] = true\n\n              # \"$\" can be triggered as \"Shift+4\" or \"Shift+$\" or just \"$\"\n              if modif == \"shift+\"\n                possible[ jQuery.hotkeys.shiftNums[ character ] ] = true\n\n            for key in keys\n              if possible[key]\n                return origHandler.apply( this, arguments )\n\n        jQuery.each [ \"keydown\", \"keyup\", \"keypress\" ], ->\n          jQuery.event.special[ this ] = { add: keyHandler }\n\n      )(jQuery)\n    else\n      console.warn \"jQuery not found, no hotkeys added :(\"\n",
+          "type": "blob"
+        },
+        "pixie.cson": {
+          "path": "pixie.cson",
+          "mode": "100644",
+          "content": "version: \"0.9.2\"\nentryPoint: \"hotkeys\"\nremoteDependencies: [\n  \"//code.jquery.com/jquery-1.10.1.min.js\"\n]\n",
+          "type": "blob"
+        },
+        "test/hotkeys.coffee": {
+          "path": "test/hotkeys.coffee",
+          "mode": "100644",
+          "content": "require \"../hotkeys\"\n\ndescribe \"hotkeys binding\", ->\n  it \"should bind a hotkey\", (done) ->\n    $(document).bind \"keydown\", \"a\", ->\n      done()\n\n    $(document).trigger $.Event \"keydown\",\n      which: 65 # a\n      keyCode: 65\n",
+          "type": "blob"
+        }
+      },
+      "distribution": {
+        "hotkeys": {
+          "path": "hotkeys",
+          "content": "(function() {\n  if (typeof jQuery !== \"undefined\" && jQuery !== null) {\n    (function(jQuery) {\n      var isFunctionKey, isTextAcceptingInput, keyHandler;\n      isTextAcceptingInput = function(element) {\n        return /textarea|select/i.test(element.nodeName) || element.type === \"text\" || element.type === \"password\";\n      };\n      isFunctionKey = function(event) {\n        var _ref;\n        return (event.type !== \"keypress\") && ((112 <= (_ref = event.which) && _ref <= 123));\n      };\n      jQuery.hotkeys = {\n        version: \"0.9.0\",\n        specialKeys: {\n          8: \"backspace\",\n          9: \"tab\",\n          13: \"return\",\n          16: \"shift\",\n          17: \"ctrl\",\n          18: \"alt\",\n          19: \"pause\",\n          20: \"capslock\",\n          27: \"esc\",\n          32: \"space\",\n          33: \"pageup\",\n          34: \"pagedown\",\n          35: \"end\",\n          36: \"home\",\n          37: \"left\",\n          38: \"up\",\n          39: \"right\",\n          40: \"down\",\n          45: \"insert\",\n          46: \"del\",\n          96: \"0\",\n          97: \"1\",\n          98: \"2\",\n          99: \"3\",\n          100: \"4\",\n          101: \"5\",\n          102: \"6\",\n          103: \"7\",\n          104: \"8\",\n          105: \"9\",\n          106: \"*\",\n          107: \"+\",\n          109: \"-\",\n          110: \".\",\n          111: \"/\",\n          112: \"f1\",\n          113: \"f2\",\n          114: \"f3\",\n          115: \"f4\",\n          116: \"f5\",\n          117: \"f6\",\n          118: \"f7\",\n          119: \"f8\",\n          120: \"f9\",\n          121: \"f10\",\n          122: \"f11\",\n          123: \"f12\",\n          144: \"numlock\",\n          145: \"scroll\",\n          186: \";\",\n          187: \"=\",\n          188: \",\",\n          189: \"-\",\n          190: \".\",\n          191: \"/\",\n          219: \"[\",\n          220: \"\\\\\",\n          221: \"]\",\n          222: \"'\",\n          224: \"meta\"\n        },\n        shiftNums: {\n          \"`\": \"~\",\n          \"1\": \"!\",\n          \"2\": \"@\",\n          \"3\": \"#\",\n          \"4\": \"$\",\n          \"5\": \"%\",\n          \"6\": \"^\",\n          \"7\": \"&\",\n          \"8\": \"*\",\n          \"9\": \"(\",\n          \"0\": \")\",\n          \"-\": \"_\",\n          \"=\": \"+\",\n          \";\": \":\",\n          \"'\": \"\\\"\",\n          \",\": \"<\",\n          \".\": \">\",\n          \"/\": \"?\",\n          \"\\\\\": \"|\"\n        }\n      };\n      keyHandler = function(handleObj) {\n        var keys, origHandler;\n        if (typeof handleObj.data !== \"string\") {\n          return;\n        }\n        origHandler = handleObj.handler;\n        keys = handleObj.data.toLowerCase().split(\" \");\n        return handleObj.handler = function(event) {\n          var character, key, modif, possible, special, target, _i, _len;\n          special = event.type !== \"keypress\" && jQuery.hotkeys.specialKeys[event.which];\n          character = String.fromCharCode(event.which).toLowerCase();\n          modif = \"\";\n          possible = {};\n          target = event.target;\n          if (event.altKey && special !== \"alt\") {\n            modif += \"alt+\";\n          }\n          if (event.ctrlKey && special !== \"ctrl\") {\n            modif += \"ctrl+\";\n          }\n          if (event.metaKey && !event.ctrlKey && special !== \"meta\") {\n            modif += \"meta+\";\n          }\n          if (this !== target) {\n            if (isTextAcceptingInput(target) && !modif && !isFunctionKey(event)) {\n              return;\n            }\n          }\n          if (event.shiftKey && special !== \"shift\") {\n            modif += \"shift+\";\n          }\n          if (special) {\n            possible[modif + special] = true;\n          } else {\n            possible[modif + character] = true;\n            possible[modif + jQuery.hotkeys.shiftNums[character]] = true;\n            if (modif === \"shift+\") {\n              possible[jQuery.hotkeys.shiftNums[character]] = true;\n            }\n          }\n          for (_i = 0, _len = keys.length; _i < _len; _i++) {\n            key = keys[_i];\n            if (possible[key]) {\n              return origHandler.apply(this, arguments);\n            }\n          }\n        };\n      };\n      return jQuery.each([\"keydown\", \"keyup\", \"keypress\"], function() {\n        return jQuery.event.special[this] = {\n          add: keyHandler\n        };\n      });\n    })(jQuery);\n  } else {\n    console.warn(\"jQuery not found, no hotkeys added :(\");\n  }\n\n}).call(this);\n\n//# sourceURL=hotkeys.coffee",
+          "type": "blob"
+        },
+        "pixie": {
+          "path": "pixie",
+          "content": "module.exports = {\"version\":\"0.9.2\",\"entryPoint\":\"hotkeys\",\"remoteDependencies\":[\"//code.jquery.com/jquery-1.10.1.min.js\"]};",
+          "type": "blob"
+        },
+        "test/hotkeys": {
+          "path": "test/hotkeys",
+          "content": "(function() {\n  require(\"../hotkeys\");\n\n  describe(\"hotkeys binding\", function() {\n    return it(\"should bind a hotkey\", function(done) {\n      $(document).bind(\"keydown\", \"a\", function() {\n        return done();\n      });\n      return $(document).trigger($.Event(\"keydown\", {\n        which: 65,\n        keyCode: 65\n      }));\n    });\n  });\n\n}).call(this);\n\n//# sourceURL=test/hotkeys.coffee",
+          "type": "blob"
+        }
+      },
+      "progenitor": {
+        "url": "http://strd6.github.io/editor/"
+      },
+      "version": "0.9.2",
+      "entryPoint": "hotkeys",
+      "remoteDependencies": [
+        "//code.jquery.com/jquery-1.10.1.min.js"
+      ],
+      "repository": {
+        "id": 13182272,
+        "name": "jquery-hotkeys",
+        "full_name": "distri/jquery-hotkeys",
+        "owner": {
+          "login": "distri",
+          "id": 6005125,
+          "avatar_url": "https://identicons.github.com/f90c81ffc1498e260c820082f2e7ca5f.png",
+          "gravatar_id": null,
+          "url": "https://api.github.com/users/distri",
+          "html_url": "https://github.com/distri",
+          "followers_url": "https://api.github.com/users/distri/followers",
+          "following_url": "https://api.github.com/users/distri/following{/other_user}",
+          "gists_url": "https://api.github.com/users/distri/gists{/gist_id}",
+          "starred_url": "https://api.github.com/users/distri/starred{/owner}{/repo}",
+          "subscriptions_url": "https://api.github.com/users/distri/subscriptions",
+          "organizations_url": "https://api.github.com/users/distri/orgs",
+          "repos_url": "https://api.github.com/users/distri/repos",
+          "events_url": "https://api.github.com/users/distri/events{/privacy}",
+          "received_events_url": "https://api.github.com/users/distri/received_events",
+          "type": "Organization",
+          "site_admin": false
+        },
+        "private": false,
+        "html_url": "https://github.com/distri/jquery-hotkeys",
+        "description": "jQuery hotkeys plugin",
+        "fork": false,
+        "url": "https://api.github.com/repos/distri/jquery-hotkeys",
+        "forks_url": "https://api.github.com/repos/distri/jquery-hotkeys/forks",
+        "keys_url": "https://api.github.com/repos/distri/jquery-hotkeys/keys{/key_id}",
+        "collaborators_url": "https://api.github.com/repos/distri/jquery-hotkeys/collaborators{/collaborator}",
+        "teams_url": "https://api.github.com/repos/distri/jquery-hotkeys/teams",
+        "hooks_url": "https://api.github.com/repos/distri/jquery-hotkeys/hooks",
+        "issue_events_url": "https://api.github.com/repos/distri/jquery-hotkeys/issues/events{/number}",
+        "events_url": "https://api.github.com/repos/distri/jquery-hotkeys/events",
+        "assignees_url": "https://api.github.com/repos/distri/jquery-hotkeys/assignees{/user}",
+        "branches_url": "https://api.github.com/repos/distri/jquery-hotkeys/branches{/branch}",
+        "tags_url": "https://api.github.com/repos/distri/jquery-hotkeys/tags",
+        "blobs_url": "https://api.github.com/repos/distri/jquery-hotkeys/git/blobs{/sha}",
+        "git_tags_url": "https://api.github.com/repos/distri/jquery-hotkeys/git/tags{/sha}",
+        "git_refs_url": "https://api.github.com/repos/distri/jquery-hotkeys/git/refs{/sha}",
+        "trees_url": "https://api.github.com/repos/distri/jquery-hotkeys/git/trees{/sha}",
+        "statuses_url": "https://api.github.com/repos/distri/jquery-hotkeys/statuses/{sha}",
+        "languages_url": "https://api.github.com/repos/distri/jquery-hotkeys/languages",
+        "stargazers_url": "https://api.github.com/repos/distri/jquery-hotkeys/stargazers",
+        "contributors_url": "https://api.github.com/repos/distri/jquery-hotkeys/contributors",
+        "subscribers_url": "https://api.github.com/repos/distri/jquery-hotkeys/subscribers",
+        "subscription_url": "https://api.github.com/repos/distri/jquery-hotkeys/subscription",
+        "commits_url": "https://api.github.com/repos/distri/jquery-hotkeys/commits{/sha}",
+        "git_commits_url": "https://api.github.com/repos/distri/jquery-hotkeys/git/commits{/sha}",
+        "comments_url": "https://api.github.com/repos/distri/jquery-hotkeys/comments{/number}",
+        "issue_comment_url": "https://api.github.com/repos/distri/jquery-hotkeys/issues/comments/{number}",
+        "contents_url": "https://api.github.com/repos/distri/jquery-hotkeys/contents/{+path}",
+        "compare_url": "https://api.github.com/repos/distri/jquery-hotkeys/compare/{base}...{head}",
+        "merges_url": "https://api.github.com/repos/distri/jquery-hotkeys/merges",
+        "archive_url": "https://api.github.com/repos/distri/jquery-hotkeys/{archive_format}{/ref}",
+        "downloads_url": "https://api.github.com/repos/distri/jquery-hotkeys/downloads",
+        "issues_url": "https://api.github.com/repos/distri/jquery-hotkeys/issues{/number}",
+        "pulls_url": "https://api.github.com/repos/distri/jquery-hotkeys/pulls{/number}",
+        "milestones_url": "https://api.github.com/repos/distri/jquery-hotkeys/milestones{/number}",
+        "notifications_url": "https://api.github.com/repos/distri/jquery-hotkeys/notifications{?since,all,participating}",
+        "labels_url": "https://api.github.com/repos/distri/jquery-hotkeys/labels{/name}",
+        "releases_url": "https://api.github.com/repos/distri/jquery-hotkeys/releases{/id}",
+        "created_at": "2013-09-28T22:58:08Z",
+        "updated_at": "2013-11-29T20:59:45Z",
+        "pushed_at": "2013-09-29T23:55:14Z",
+        "git_url": "git://github.com/distri/jquery-hotkeys.git",
+        "ssh_url": "git@github.com:distri/jquery-hotkeys.git",
+        "clone_url": "https://github.com/distri/jquery-hotkeys.git",
+        "svn_url": "https://github.com/distri/jquery-hotkeys",
+        "homepage": null,
+        "size": 608,
+        "stargazers_count": 0,
+        "watchers_count": 0,
+        "language": "CoffeeScript",
+        "has_issues": true,
+        "has_downloads": true,
+        "has_wiki": true,
+        "forks_count": 0,
+        "mirror_url": null,
+        "open_issues_count": 0,
+        "forks": 0,
+        "open_issues": 0,
+        "watchers": 0,
+        "default_branch": "master",
+        "master_branch": "master",
+        "permissions": {
+          "admin": true,
+          "push": true,
+          "pull": true
+        },
+        "organization": {
+          "login": "distri",
+          "id": 6005125,
+          "avatar_url": "https://identicons.github.com/f90c81ffc1498e260c820082f2e7ca5f.png",
+          "gravatar_id": null,
+          "url": "https://api.github.com/users/distri",
+          "html_url": "https://github.com/distri",
+          "followers_url": "https://api.github.com/users/distri/followers",
+          "following_url": "https://api.github.com/users/distri/following{/other_user}",
+          "gists_url": "https://api.github.com/users/distri/gists{/gist_id}",
+          "starred_url": "https://api.github.com/users/distri/starred{/owner}{/repo}",
+          "subscriptions_url": "https://api.github.com/users/distri/subscriptions",
+          "organizations_url": "https://api.github.com/users/distri/orgs",
+          "repos_url": "https://api.github.com/users/distri/repos",
+          "events_url": "https://api.github.com/users/distri/events{/privacy}",
+          "received_events_url": "https://api.github.com/users/distri/received_events",
+          "type": "Organization",
+          "site_admin": false
+        },
+        "network_count": 0,
+        "subscribers_count": 1,
+        "branch": "v0.9.2",
+        "defaultBranch": "master"
+      },
+      "dependencies": {}
     },
     "observable": {
       "source": {

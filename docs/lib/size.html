@@ -2,7 +2,7 @@
 
 <html>
 <head>
-  <title>lib/dragzone</title>
+  <title>lib/size</title>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
   <link rel="stylesheet" media="all" href="http://strd6.github.io/cdn/parallel/docco.css" />
@@ -18,7 +18,7 @@
               <div class="pilwrap">
                 <a class="pilcrow" href="#section-1">&#182;</a>
               </div>
-              <h1 id="highway-through-the-dragger-zone">Highway through the Dragger Zone</h1>
+              <h1 id="size">Size</h1>
 
             </div>
             <div class="content"><pre><code class="lang-coffeescript">
@@ -32,104 +32,36 @@
               <div class="pilwrap">
                 <a class="pilcrow" href="#section-2">&#182;</a>
               </div>
-              
-            </div>
-            <div class="content"><pre><code class="lang-coffeescript">Point = require <span class="string">"point"</span>
-
-debugPoint = document.createElement <span class="string">"div"</span>
-debugPoint.className = <span class="string">"point"</span>
-document.body.appendChild debugPoint
-
-
-module.<span class="function"><span class="title">exports</span></span> = ($element, items) -&gt;
-  active = <span class="literal">false</span>
-  activeItem = <span class="literal">null</span>
-  activeView = <span class="literal">null</span>
-  offset = <span class="literal">null</span>
-  startPosition = <span class="literal">null</span>
-  initialRotation = <span class="literal">null</span>
-  initialScale = <span class="literal">null</span>
-  center = <span class="literal">null</span>
-
-  $element.bind
-    <span class="string">"touchstart mousedown"</span>: (event) -&gt;
-      $target = $(target = event.target)
-      <span class="keyword">if</span> $target.<span class="keyword">is</span> <span class="string">"img"</span>
-        event.preventDefault()
-
-        active = <span class="literal">true</span>
-        activeView = target
-        activeItem = items()[$(<span class="string">".items img"</span>).index(target)]
-        center = activeItem.center()
-
-        $(debugPoint).css
-          top: center.y
-          left: center.x
-
-        initialScale = <span class="literal">null</span>
-        initialRotation = <span class="literal">null</span>
-
-        <span class="keyword">if</span> event.shiftKey
-          initialScale = activeItem.scale()
-        <span class="keyword">else</span> <span class="keyword">if</span> event.ctrlKey <span class="keyword">or</span> event.metaKey
-          initialRotation = activeItem.rotation()
-
-        startPosition = localPosition(event)
-        itemStart = activeItem.position()
-
-        offset = itemStart.subtract startPosition
-
-      <span class="keyword">return</span>
-
-    <span class="string">"touchmove mousemove"</span>: (event) -&gt;
-      <span class="keyword">return</span> <span class="keyword">unless</span> active
-      p = localPosition(event)
-
-      <span class="keyword">if</span> initialScale
-        initialVec = startPosition.subtract center
-        currentVec = p.subtract center
-        deltaScale = Point currentVec.x / initialVec.x, currentVec.y / initialVec.y
-
-        activeItem.scale Point deltaScale.x * initialScale.x, deltaScale.y * initialScale.y
-      <span class="keyword">else</span> <span class="keyword">if</span> initialRotation?
-        vec = p.subtract center
-        initialVec = startPosition.subtract center
-        deltaRotation = Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x)
-        activeItem.rotation initialRotation + deltaRotation
-      <span class="keyword">else</span>
-        activeItem.position p.add offset
-
-    <span class="string">"touchend mouseup"</span>: (event) -&gt;
-      active = <span class="literal">false</span>
-
-      <span class="keyword">return</span></code></pre>
-</div>
-        </li>
-        
-        
-        <li id="section-3">
-            <div class="annotation">
-              <div class="pilwrap">
-                <a class="pilcrow" href="#section-3">&#182;</a>
-              </div>
-              <h2 id="helpers">Helpers</h2>
+              <p>A simple 2d extent.</p>
 
             </div>
-            <div class="content"><pre><code class="lang-coffeescript">
-</code></pre>
-</div>
-        </li>
-        
-        
-        <li id="section-4">
-            <div class="annotation">
-              <div class="pilwrap">
-                <a class="pilcrow" href="#section-4">&#182;</a>
-              </div>
-              
-            </div>
-            <div class="content"><pre><code class="lang-coffeescript"><span class="function"><span class="title">localPosition</span></span> = (event) -&gt;
-  Point event.pageX, event.pageY</code></pre>
+            <div class="content"><pre><code class="lang-coffeescript"><span class="function"><span class="title">Size</span></span> = (width, height) -&gt;
+  <span class="keyword">if</span> <span class="keyword">typeof</span> width <span class="keyword">is</span> <span class="string">"object"</span>
+    {width, height} = width
+
+  width: width
+  height: height
+  __proto__: Size.prototype
+
+Size.prototype =
+  scale: (scalar) -&gt;
+    Size(<span class="property">@width</span> * scalar, <span class="property">@height</span> * scalar)
+
+  toString: -&gt;
+    <span class="string">"Size(<span class="subst">#{@width}</span>, <span class="subst">#{@height}</span>)"</span>
+
+  max: (otherSize) -&gt;
+    Size(
+      Math.max(<span class="property">@width</span>, otherSize.width)
+      Math.max(<span class="property">@height</span>, otherSize.height)
+    )
+
+  each: (iterator) -&gt;
+    [<span class="number">0.</span>..<span class="property">@height</span>].forEach (y) -&gt;
+      [<span class="number">0.</span>..<span class="property">@width</span>].forEach (x) -&gt;
+        iterator(x, y)
+
+module.exports = Size</code></pre>
 </div>
         </li>
         

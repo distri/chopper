@@ -37,27 +37,25 @@
             <div class="content"><pre><code class="lang-coffeescript">Composition = require <span class="string">"composition"</span>
 Observable = require <span class="string">"observable"</span>
 Point = require <span class="string">"point"</span>
-{defaults} = require <span class="string">"util"</span>
+Size = require <span class="string">"./lib/size"</span>
+{extend, defaults} = require <span class="string">"util"</span>
 
 module.<span class="function"><span class="title">exports</span></span> = (I={}) -&gt;
   defaults I,
     position: Point(<span class="number">0</span>, <span class="number">0</span>)
     scale: Point(<span class="number">1</span>, <span class="number">1</span>)
     rotation: <span class="number">0</span>
-    width: <span class="number">1</span>
-    height: <span class="number">1</span>
+    size: Size(<span class="number">0</span>, <span class="number">0</span>)
 
   self = Composition(I).extend
+    copy: -&gt;
+      extend {}, I
     center: -&gt;
-      size = Point(self.width(), self.height()).scale(<span class="number">0.5</span>)
+      size = Point(<span class="number">1</span>, <span class="number">1</span>).scale(self.size()).scale(<span class="number">0.5</span>)
 
       self.position().add(size)
 
-    scaledSize: -&gt;
-      self.scale().scale(self.width(), self.height())
-
-  self.attrObservable <span class="string">"position"</span>, <span class="string">"rotation"</span>, <span class="string">"scale"</span>, <span class="string">"src"</span>
-  self.attrAccessor <span class="string">"width"</span>, <span class="string">"height"</span>
+  self.attrObservable <span class="string">"position"</span>, <span class="string">"rotation"</span>, <span class="string">"scale"</span>, <span class="string">"size"</span>, <span class="string">"src"</span>
 
   <span class="function"><span class="title">translation</span></span> = -&gt;
     {x, y} = self.position()
@@ -73,6 +71,16 @@ module.<span class="function"><span class="title">exports</span></span> = (I={})
     prefix = <span class="string">"-webkit-"</span>
   <span class="keyword">else</span>
     prefix = <span class="string">""</span>
+
+  <span class="function"><span class="title">autosize</span></span> = (src) -&gt;
+    img = document.createElement <span class="string">"img"</span>
+    img.<span class="function"><span class="title">onload</span></span> = -&gt;
+      self.size <span class="keyword">this</span>
+
+    img.src = src
+
+  <span class="comment"># TODO: observe src changes</span>
+  autosize self.src()
 
   self.css = Observable -&gt;
     <span class="string">"<span class="subst">#{prefix}</span>transform: <span class="subst">#{translation()}</span> <span class="subst">#{scale()}</span> rotate(<span class="subst">#{self.rotation()}</span>rad);"</span>
