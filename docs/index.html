@@ -46,6 +46,8 @@ Dragzone = require <span class="string">"./lib/dragzone"</span>
 
 Dragzone($(<span class="string">"body"</span>))
 
+Item = require <span class="string">"./item"</span>
+
 <span class="function"><span class="title">handler</span></span> = (file) -&gt;
   addImage URL.createObjectURL(file)
 
@@ -59,19 +61,40 @@ S3Load(<span class="string">"http://addressable.s3.amazonaws.com/?prefix=uploads
 .<span class="keyword">then</span> (items) -&gt;
   items.map (item) -&gt;
     <span class="string">"http://addressable.s3.amazonaws.com/<span class="subst">#{item}</span>"</span>
-  .map addImage
+  .map (src) -&gt;
+    add Item
+      src: src
 
 <span class="function"><span class="title">addImage</span></span> = (src) -&gt;
   img = document.createElement <span class="string">"img"</span>
 
   img.<span class="function"><span class="title">onload</span></span> = -&gt;
-    $(<span class="keyword">this</span>).css
-      top: (document.body.clientHeight - <span class="keyword">this</span>.height) / <span class="number">2</span>
-      left: (document.body.clientWidth - <span class="keyword">this</span>.width) / <span class="number">2</span>
+    <span class="keyword">delete</span> <span class="keyword">this</span>.onload
+
+    <span class="comment"># $(this).css</span>
+    <span class="comment">#   top: (document.body.clientHeight - this.height) / 2</span>
+    <span class="comment">#   left: (document.body.clientWidth - this.width) / 2</span>
 
   img.src = src
 
-  document.body.appendChild img</code></pre>
+  document.body.appendChild img
+
+  <span class="keyword">return</span> img
+
+<span class="function"><span class="title">add</span></span> = (item) -&gt;
+  view = addImage(item.src())
+  view.data = item
+
+  item.src.observe (src) -&gt;
+    view.src = src
+
+  <span class="function"><span class="title">updateCss</span></span> = (css) -&gt;
+    <span class="comment"># console.log css</span>
+    view.style.cssText = css
+  item.css.observe updateCss
+  updateCss()
+
+  <span class="keyword">return</span> item</code></pre>
 </div>
         </li>
         
