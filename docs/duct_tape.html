@@ -2,7 +2,7 @@
 
 <html>
 <head>
-  <title>item</title>
+  <title>duct_tape</title>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
   <link rel="stylesheet" media="all" href="http://strd6.github.io/cdn/parallel/docco.css" />
@@ -18,7 +18,7 @@
               <div class="pilwrap">
                 <a class="pilcrow" href="#section-1">&#182;</a>
               </div>
-              <h1 id="item-model">Item Model</h1>
+              <h1 id="duct-tape">Duct Tape</h1>
 
             </div>
             <div class="content"><pre><code class="lang-coffeescript">
@@ -34,45 +34,15 @@
               </div>
               
             </div>
-            <div class="content"><pre><code class="lang-coffeescript">Composition = require <span class="string">"composition"</span>
-Observable = require <span class="string">"observable"</span>
-Point = require <span class="string">"point"</span>
-{defaults} = require <span class="string">"util"</span>
+            <div class="content"><pre><code class="lang-coffeescript">Point = require <span class="string">"point"</span>
 
-module.<span class="function"><span class="title">exports</span></span> = (I={}) -&gt;
-  defaults I,
-    position: Point(<span class="number">0</span>, <span class="number">0</span>)
-    scale: Point(<span class="number">1</span>, <span class="number">1</span>)
-    rotation: <span class="number">0</span>
-    width: <span class="number">1</span>
-    height: <span class="number">1</span>
+Point::<span class="function"><span class="title">scale</span></span> = (x, y) -&gt;
+  y ?= x
 
-  self = Composition(I).extend
-    center: -&gt;
-      size = Point(self.width(), self.height()).scale(<span class="number">0.5</span>)
+  Point(<span class="property">@x</span> * x, <span class="property">@y</span> * y)
 
-      self.position().add(size)
-
-    scaledSize: -&gt;
-      self.scale().scale(self.width(), self.height())
-
-  self.attrObservable <span class="string">"position"</span>, <span class="string">"rotation"</span>, <span class="string">"scale"</span>, <span class="string">"src"</span>
-  self.attrAccessor <span class="string">"width"</span>, <span class="string">"height"</span>
-
-  <span class="function"><span class="title">translation</span></span> = -&gt;
-    {x, y} = self.position()
-
-    <span class="string">"translate(<span class="subst">#{x}</span>px, <span class="subst">#{y}</span>px)"</span>
-
-  <span class="function"><span class="title">scale</span></span> = -&gt;
-    {x, y} = self.scale()
-
-    <span class="string">"scale(<span class="subst">#{x}</span>,<span class="subst">#{y}</span>)"</span>
-
-  self.css = Observable -&gt;
-    <span class="string">"-webkit-transform: <span class="subst">#{translation()}</span> <span class="subst">#{scale()}</span> rotate(<span class="subst">#{self.rotation()}</span>rad);"</span>
-
-  <span class="keyword">return</span> self</code></pre>
+Point::<span class="function"><span class="title">abs</span></span> = -&gt;
+  Point(Math.abs(<span class="property">@x</span>), Math.abs(<span class="property">@y</span>))</code></pre>
 </div>
         </li>
         

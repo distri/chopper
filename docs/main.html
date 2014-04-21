@@ -35,7 +35,9 @@
               <p>Chop up images in the chop shop.</p>
 
             </div>
-            <div class="content"><pre><code class="lang-coffeescript">{applyStylesheet} = require <span class="string">"util"</span>
+            <div class="content"><pre><code class="lang-coffeescript">require <span class="string">"./duct_tape"</span>
+
+{applyStylesheet} = require <span class="string">"util"</span>
 
 drop = require <span class="string">"./lib/drop"</span>
 paste = require <span class="string">"./lib/paste"</span>
@@ -80,9 +82,12 @@ S3Load(<span class="string">"http://addressable.s3.amazonaws.com/?prefix=uploads
 
   <span class="keyword">return</span> img
 
+global.items = []
 <span class="function"><span class="title">add</span></span> = (item) -&gt;
   view = addImage(item.src())
   view.data = item
+
+  items.push item
 
   item.src.observe (src) -&gt;
     view.src = src

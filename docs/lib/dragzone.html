@@ -36,6 +36,10 @@
             </div>
             <div class="content"><pre><code class="lang-coffeescript">Point = require <span class="string">"point"</span>
 
+debugPoint = document.createElement <span class="string">"div"</span>
+debugPoint.className = <span class="string">"point"</span>
+document.body.appendChild debugPoint
+
 module.<span class="function"><span class="title">exports</span></span> = ($element) -&gt;
   activeItem = <span class="literal">null</span>
   offset = <span class="literal">null</span>
@@ -52,6 +56,10 @@ module.<span class="function"><span class="title">exports</span></span> = ($elem
 
         activeItem = target.data
         center = activeItem.center()
+
+        $(debugPoint).css
+          top: center.y
+          left: center.x
 
         initialScale = <span class="literal">null</span>
         initialRotation = <span class="literal">null</span>
@@ -73,10 +81,10 @@ module.<span class="function"><span class="title">exports</span></span> = ($elem
       p = localPosition(event)
 
       <span class="keyword">if</span> initialScale
-        <span class="comment"># TODO Match actual item size rather than [100, 100]</span>
-        delta = p.subtract startPosition
-        size = <span class="number">100</span>
-        deltaScale = delta.add(Point(size, size)).scale <span class="number">1</span>/size
+        initialVec = startPosition.subtract center
+        currentVec = p.subtract center
+        deltaScale = Point currentVec.x / initialVec.x, currentVec.y / initialVec.y
+
         activeItem.scale Point deltaScale.x * initialScale.x, deltaScale.y * initialScale.y
       <span class="keyword">else</span> <span class="keyword">if</span> initialRotation?
         vec = p.subtract center
