@@ -3,6 +3,10 @@ Highway through the Dragger Zone
 
     Point = require "point"
 
+    debugPoint = document.createElement "div"
+    debugPoint.className = "point"
+    document.body.appendChild debugPoint
+
     module.exports = ($element) ->
       activeItem = null
       offset = null
@@ -19,6 +23,10 @@ Highway through the Dragger Zone
 
             activeItem = target.data
             center = activeItem.center()
+
+            $(debugPoint).css
+              top: center.y
+              left: center.x
 
             initialScale = null
             initialRotation = null
@@ -40,10 +48,10 @@ Highway through the Dragger Zone
           p = localPosition(event)
 
           if initialScale
-            # TODO Match actual item size rather than [100, 100]
-            delta = p.subtract startPosition
-            size = 100
-            deltaScale = delta.add(Point(size, size)).scale 1/size
+            initialVec = startPosition.subtract center
+            currentVec = p.subtract center
+            deltaScale = Point currentVec.x / initialVec.x, currentVec.y / initialVec.y
+
             activeItem.scale Point deltaScale.x * initialScale.x, deltaScale.y * initialScale.y
           else if initialRotation?
             vec = p.subtract center

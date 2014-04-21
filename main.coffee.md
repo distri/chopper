@@ -3,6 +3,8 @@ Chopper
 
 Chop up images in the chop shop.
 
+    require "./duct_tape"
+
     {applyStylesheet} = require "util"
 
     drop = require "./lib/drop"
@@ -48,9 +50,12 @@ Chop up images in the chop shop.
 
       return img
 
+    global.items = []
     add = (item) ->
       view = addImage(item.src())
       view.data = item
+
+      items.push item
 
       item.src.observe (src) ->
         view.src = src

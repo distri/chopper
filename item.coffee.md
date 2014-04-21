@@ -16,8 +16,8 @@ Item Model
 
       self = Composition(I).extend
         center: ->
-          {x, y} = self.scale()
-          size = Point(self.width() * x, self.height() * y).scale(0.5)
+          size = Point(self.width(), self.height()).scale(0.5)
+
           self.position().add(size)
 
         scaledSize: ->
