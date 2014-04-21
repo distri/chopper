@@ -53,6 +53,9 @@ module.<span class="function"><span class="title">exports</span></span> = (I={})
       size = Point(self.width() * x, self.height() * y).scale(<span class="number">0.5</span>)
       self.position().add(size)
 
+    scaledSize: -&gt;
+      self.scale().scale(self.width(), self.height())
+
   self.attrObservable <span class="string">"position"</span>, <span class="string">"rotation"</span>, <span class="string">"scale"</span>, <span class="string">"src"</span>
   self.attrAccessor <span class="string">"width"</span>, <span class="string">"height"</span>
 
@@ -67,7 +70,7 @@ module.<span class="function"><span class="title">exports</span></span> = (I={})
     <span class="string">"scale(<span class="subst">#{x}</span>,<span class="subst">#{y}</span>)"</span>
 
   self.css = Observable -&gt;
-    <span class="string">"-webkit-transform: <span class="subst">#{translation()}</span> rotate(<span class="subst">#{self.rotation()}</span>rad) <span class="subst">#{scale()}</span>;"</span>
+    <span class="string">"-webkit-transform: <span class="subst">#{translation()}</span> <span class="subst">#{scale()}</span> rotate(<span class="subst">#{self.rotation()}</span>rad);"</span>
 
   <span class="keyword">return</span> self</code></pre>
 </div>
