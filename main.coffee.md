@@ -13,6 +13,8 @@ Chop up images in the chop shop.
     Dragzone = require "./lib/dragzone"
 
     Dragzone($("body"))
+    
+    Item = require "./item"
 
     handler = (file) ->
       addImage URL.createObjectURL(file)
@@ -27,16 +29,37 @@ Chop up images in the chop shop.
     .then (items) ->
       items.map (item) ->
         "http://addressable.s3.amazonaws.com/#{item}"
-      .map addImage
+      .map (src) ->
+        add Item
+          src: src
 
     addImage = (src) ->
       img = document.createElement "img"
 
       img.onload = ->
-        $(this).css
-          top: (document.body.clientHeight - this.height) / 2
-          left: (document.body.clientWidth - this.width) / 2
+        delete this.onload
+
+        # $(this).css
+        #   top: (document.body.clientHeight - this.height) / 2
+        #   left: (document.body.clientWidth - this.width) / 2
 
       img.src = src
 
       document.body.appendChild img
+
+      return img
+
+    add = (item) ->
+      view = addImage(item.src())
+      view.data = item
+
+      item.src.observe (src) ->
+        view.src = src
+
+      updateCss = (css) ->
+        # console.log css
+        view.style.cssText = css
+      item.css.observe updateCss
+      updateCss()
+
+      return item
