@@ -71,9 +71,8 @@ S3Load(<span class="string">"http://addressable.s3.amazonaws.com/?prefix=uploads
   img.<span class="function"><span class="title">onload</span></span> = -&gt;
     <span class="keyword">delete</span> <span class="keyword">this</span>.onload
 
-    <span class="comment"># $(this).css</span>
-    <span class="comment">#   top: (document.body.clientHeight - this.height) / 2</span>
-    <span class="comment">#   left: (document.body.clientWidth - this.width) / 2</span>
+    <span class="keyword">this</span>.data.width(<span class="keyword">this</span>.width)
+    <span class="keyword">this</span>.data.height(<span class="keyword">this</span>.height)
 
   img.src = src
 

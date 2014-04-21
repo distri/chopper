@@ -34,11 +34,15 @@
               </div>
               
             </div>
-            <div class="content"><pre><code class="lang-coffeescript">module.<span class="function"><span class="title">exports</span></span> = ($element) -&gt;
+            <div class="content"><pre><code class="lang-coffeescript">Point = require <span class="string">"point"</span>
+
+module.<span class="function"><span class="title">exports</span></span> = ($element) -&gt;
   activeItem = <span class="literal">null</span>
   offset = <span class="literal">null</span>
   startPosition = <span class="literal">null</span>
+  initialRotation = <span class="literal">null</span>
   initialScale = <span class="literal">null</span>
+  center = <span class="literal">null</span>
 
   $element.bind
     <span class="string">"touchstart mousedown"</span>: (event) -&gt;
@@ -47,16 +51,20 @@
         event.preventDefault()
 
         activeItem = target.data
+        center = activeItem.center()
+
+        initialScale = <span class="literal">null</span>
+        initialRotation = <span class="literal">null</span>
 
         <span class="keyword">if</span> event.shiftKey
           initialScale = activeItem.scale()
-        <span class="keyword">else</span>
-          initialScale = <span class="literal">null</span>
+        <span class="keyword">else</span> <span class="keyword">if</span> event.ctrlKey <span class="keyword">or</span> event.metaKey
+          initialRotation = activeItem.rotation()
 
         startPosition = localPosition(event)
         itemStart = activeItem.position()
 
-        offset = subtract itemStart, startPosition
+        offset = itemStart.subtract startPosition
 
       <span class="keyword">return</span>
 
@@ -65,11 +73,18 @@
       p = localPosition(event)
 
       <span class="keyword">if</span> initialScale
-        delta = subtract p, startPosition
-        deltaScale = scale add(delta, [<span class="number">100</span>, <span class="number">100</span>]), <span class="number">1</span>/<span class="number">100</span>
-        activeItem.scale [deltaScale[<span class="number">0</span>] * initialScale[<span class="number">0</span>], deltaScale[<span class="number">1</span>] * initialScale[<span class="number">1</span>]]
+        <span class="comment"># TODO Match actual item size rather than [100, 100]</span>
+        delta = p.subtract startPosition
+        size = <span class="number">100</span>
+        deltaScale = delta.add(Point(size, size)).scale <span class="number">1</span>/size
+        activeItem.scale Point deltaScale.x * initialScale.x, deltaScale.y * initialScale.y
+      <span class="keyword">else</span> <span class="keyword">if</span> initialRotation?
+        vec = p.subtract center
+        initialVec = startPosition.subtract center
+        deltaRotation = Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x)
+        activeItem.rotation initialRotation + deltaRotation
       <span class="keyword">else</span>
-        activeItem.position add(p, offset)
+        activeItem.position p.add offset
 
     <span class="string">"touchend mouseup"</span>: (event) -&gt;
       activeItem = <span class="literal">null</span>
@@ -101,16 +116,7 @@
               
             </div>
             <div class="content"><pre><code class="lang-coffeescript"><span class="function"><span class="title">localPosition</span></span> = (event) -&gt;
-  [event.pageX, event.pageY]
-
-<span class="function"><span class="title">add</span></span> = (a, b) -&gt;
-  [a[<span class="number">0</span>] + b[<span class="number">0</span>], a[<span class="number">1</span>] + b[<span class="number">1</span>]]
-
-<span class="function"><span class="title">subtract</span></span> = (a, b) -&gt;
-  [a[<span class="number">0</span>] - b[<span class="number">0</span>], a[<span class="number">1</span>] - b[<span class="number">1</span>]]
-
-<span class="function"><span class="title">scale</span></span> = (point, scalar) -&gt;
-  [point[<span class="number">0</span>] * scalar, point[<span class="number">1</span>] * scalar]</code></pre>
+  Point event.pageX, event.pageY</code></pre>
 </div>
         </li>
         
