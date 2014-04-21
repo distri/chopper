@@ -36,7 +36,12 @@ Item Model
         
         "scale(#{x},#{y})"
 
+      if navigator.userAgent.match /WebKit/
+        prefix = "-webkit-"
+      else
+        prefix = ""
+
       self.css = Observable ->
-        "-webkit-transform: #{translation()} #{scale()} rotate(#{self.rotation()}rad);"
+        "#{prefix}transform: #{translation()} #{scale()} rotate(#{self.rotation()}rad);"
 
       return self

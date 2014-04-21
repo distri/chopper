@@ -35,6 +35,8 @@ Chop up images in the chop shop.
         add Item
           src: src
 
+      console.log appData()
+
     addImage = (src) ->
       img = document.createElement "img"
 
@@ -67,3 +69,7 @@ Chop up images in the chop shop.
       updateCss()
 
       return item
+
+    global.appData = ->
+      JSON.stringify items.map (item) ->
+        item.I
