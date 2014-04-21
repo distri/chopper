@@ -69,8 +69,13 @@ module.<span class="function"><span class="title">exports</span></span> = (I={})
 
     <span class="string">"scale(<span class="subst">#{x}</span>,<span class="subst">#{y}</span>)"</span>
 
+  <span class="keyword">if</span> navigator.userAgent.match <span class="regexp">/WebKit/</span>
+    prefix = <span class="string">"-webkit-"</span>
+  <span class="keyword">else</span>
+    prefix = <span class="string">""</span>
+
   self.css = Observable -&gt;
-    <span class="string">"-webkit-transform: <span class="subst">#{translation()}</span> <span class="subst">#{scale()}</span> rotate(<span class="subst">#{self.rotation()}</span>rad);"</span>
+    <span class="string">"<span class="subst">#{prefix}</span>transform: <span class="subst">#{translation()}</span> <span class="subst">#{scale()}</span> rotate(<span class="subst">#{self.rotation()}</span>rad);"</span>
 
   <span class="keyword">return</span> self</code></pre>
 </div>

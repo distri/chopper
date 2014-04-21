@@ -67,6 +67,8 @@ S3Load(<span class="string">"http://addressable.s3.amazonaws.com/?prefix=uploads
     add Item
       src: src
 
+  console.log appData()
+
 <span class="function"><span class="title">addImage</span></span> = (src) -&gt;
   img = document.createElement <span class="string">"img"</span>
 
@@ -98,7 +100,11 @@ global.items = []
   item.css.observe updateCss
   updateCss()
 
-  <span class="keyword">return</span> item</code></pre>
+  <span class="keyword">return</span> item
+
+global.<span class="function"><span class="title">appData</span></span> = -&gt;
+  JSON.stringify items.map (item) -&gt;
+    item.I</code></pre>
 </div>
         </li>
         
