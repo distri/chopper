@@ -20,6 +20,9 @@ Item Model
           size = Point(self.width() * x, self.height() * y).scale(0.5)
           self.position().add(size)
 
+        scaledSize: ->
+          self.scale().scale(self.width(), self.height())
+
       self.attrObservable "position", "rotation", "scale", "src"
       self.attrAccessor "width", "height"
 
@@ -34,6 +37,6 @@ Item Model
         "scale(#{x},#{y})"
 
       self.css = Observable ->
-        "-webkit-transform: #{translation()} rotate(#{self.rotation()}rad) #{scale()};"
+        "-webkit-transform: #{translation()} #{scale()} rotate(#{self.rotation()}rad);"
 
       return self
