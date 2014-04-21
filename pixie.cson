@@ -5,4 +5,5 @@ remoteDependencies: [
 dependencies:
   composition: "distri/compositions:v0.1.1"
   observable: "distri/observable:v0.1.1"
+  point: "distri/point:v0.2.0"
   util: "distri/util:v0.1.0"

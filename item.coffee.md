@@ -3,35 +3,37 @@ Item Model
 
     Composition = require "composition"
     Observable = require "observable"
+    Point = require "point"
     {defaults} = require "util"
 
     module.exports = (I={}) ->
       defaults I,
-        position: [0, 0]
-        scale: [1, 1]
+        position: Point(0, 0)
+        scale: Point(1, 1)
         rotation: 0
+        width: 1
+        height: 1
 
-      self = Composition(I)
+      self = Composition(I).extend
+        center: ->
+          {x, y} = self.scale()
+          size = Point(self.width() * x, self.height() * y).scale(0.5)
+          self.position().add(size)
 
       self.attrObservable "position", "rotation", "scale", "src"
+      self.attrAccessor "width", "height"
 
       translation = ->
-        values = self.position().map (n) ->
-          "#{n}px"
-        .join(",")
+        {x, y} = self.position()
 
-        "translate(#{values})"
+        "translate(#{x}px, #{y}px)"
 
-      self.css = Observable T ->
-        "-webkit-transform: #{translation()} rotate(#{self.rotation()}rad) scale(#{self.scale().join(",")});"
+      scale = ->
+        {x, y} = self.scale()
+        
+        "scale(#{x},#{y})"
+
+      self.css = Observable ->
+        "-webkit-transform: #{translation()} rotate(#{self.rotation()}rad) #{scale()};"
 
       return self
-
-Helpers
--------
-
-    T = (output) ->
-      (atom) ->
-        r = output(atom)
-        console.log r
-        return r

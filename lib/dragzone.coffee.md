@@ -1,11 +1,15 @@
 Highway through the Dragger Zone
 ================================
 
+    Point = require "point"
+
     module.exports = ($element) ->
       activeItem = null
       offset = null
       startPosition = null
+      initialRotation = null
       initialScale = null
+      center = null
 
       $element.bind
         "touchstart mousedown": (event) ->
@@ -14,16 +18,20 @@ Highway through the Dragger Zone
             event.preventDefault()
 
             activeItem = target.data
+            center = activeItem.center()
+
+            initialScale = null
+            initialRotation = null
 
             if event.shiftKey
               initialScale = activeItem.scale()
-            else
-              initialScale = null
+            else if event.ctrlKey or event.metaKey
+              initialRotation = activeItem.rotation()
 
             startPosition = localPosition(event)
             itemStart = activeItem.position()
 
-            offset = subtract itemStart, startPosition
+            offset = itemStart.subtract startPosition
 
           return
 
@@ -32,11 +40,18 @@ Highway through the Dragger Zone
           p = localPosition(event)
 
           if initialScale
-            delta = subtract p, startPosition
-            deltaScale = scale add(delta, [100, 100]), 1/100
-            activeItem.scale [deltaScale[0] * initialScale[0], deltaScale[1] * initialScale[1]]
+            # TODO Match actual item size rather than [100, 100]
+            delta = p.subtract startPosition
+            size = 100
+            deltaScale = delta.add(Point(size, size)).scale 1/size
+            activeItem.scale Point deltaScale.x * initialScale.x, deltaScale.y * initialScale.y
+          else if initialRotation?
+            vec = p.subtract center
+            initialVec = startPosition.subtract center
+            deltaRotation = Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x)
+            activeItem.rotation initialRotation + deltaRotation
           else
-            activeItem.position add(p, offset)
+            activeItem.position p.add offset
 
         "touchend mouseup": (event) ->
           activeItem = null
@@ -47,13 +62,4 @@ Helpers
 -------
 
     localPosition = (event) ->
-      [event.pageX, event.pageY]
-
-    add = (a, b) ->
-      [a[0] + b[0], a[1] + b[1]]
-
-    subtract = (a, b) ->
-      [a[0] - b[0], a[1] - b[1]]
-
-    scale = (point, scalar) ->
-      [point[0] * scalar, point[1] * scalar]
+      Point event.pageX, event.pageY

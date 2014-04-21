@@ -39,9 +39,8 @@ Chop up images in the chop shop.
       img.onload = ->
         delete this.onload
 
-        # $(this).css
-        #   top: (document.body.clientHeight - this.height) / 2
-        #   left: (document.body.clientWidth - this.width) / 2
+        this.data.width(this.width)
+        this.data.height(this.height)
 
       img.src = src
 
