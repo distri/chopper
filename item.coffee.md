@@ -4,27 +4,25 @@ Item Model
     Composition = require "composition"
     Observable = require "observable"
     Point = require "point"
-    {defaults} = require "util"
+    Size = require "./lib/size"
+    {extend, defaults} = require "util"
 
     module.exports = (I={}) ->
       defaults I,
         position: Point(0, 0)
         scale: Point(1, 1)
         rotation: 0
-        width: 1
-        height: 1
+        size: Size(0, 0)
 
       self = Composition(I).extend
+        copy: ->
+          extend {}, I
         center: ->
-          size = Point(self.width(), self.height()).scale(0.5)
+          size = Point(1, 1).scale(self.size()).scale(0.5)
 
           self.position().add(size)
 
-        scaledSize: ->
-          self.scale().scale(self.width(), self.height())
-
-      self.attrObservable "position", "rotation", "scale", "src"
-      self.attrAccessor "width", "height"
+      self.attrObservable "position", "rotation", "scale", "size", "src"
 
       translation = ->
         {x, y} = self.position()
@@ -40,6 +38,16 @@ Item Model
         prefix = "-webkit-"
       else
         prefix = ""
+
+      autosize = (src) ->
+        img = document.createElement "img"
+        img.onload = ->
+          self.size this
+
+        img.src = src
+
+      # TODO: observe src changes
+      autosize self.src()
 
       self.css = Observable ->
         "#{prefix}transform: #{translation()} #{scale()} rotate(#{self.rotation()}rad);"

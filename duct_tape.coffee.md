@@ -1,6 +1,7 @@
 Duct Tape
 =========
 
+    global.Observable = require "observable"
     Point = require "point"
 
     Point::scale = (x, y) ->

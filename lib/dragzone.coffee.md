@@ -7,8 +7,11 @@ Highway through the Dragger Zone
     debugPoint.className = "point"
     document.body.appendChild debugPoint
 
-    module.exports = ($element) ->
+
+    module.exports = ($element, items) ->
+      active = false
       activeItem = null
+      activeView = null
       offset = null
       startPosition = null
       initialRotation = null
@@ -21,7 +24,9 @@ Highway through the Dragger Zone
           if $target.is "img"
             event.preventDefault()
 
-            activeItem = target.data
+            active = true
+            activeView = target
+            activeItem = items()[$(".items img").index(target)]
             center = activeItem.center()
 
             $(debugPoint).css
@@ -44,7 +49,7 @@ Highway through the Dragger Zone
           return
 
         "touchmove mousemove": (event) ->
-          return unless activeItem
+          return unless active
           p = localPosition(event)
 
           if initialScale
@@ -62,7 +67,7 @@ Highway through the Dragger Zone
             activeItem.position p.add offset
 
         "touchend mouseup": (event) ->
-          activeItem = null
+          active = false
 
           return
 
