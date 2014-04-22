@@ -7,6 +7,7 @@ Highway through the Dragger Zone
     debugPoint.className = "point"
     document.body.appendChild debugPoint
 
+    Actions = require "../hotkey_actions"
 
     module.exports = ($element, items) ->
       active = false
@@ -18,6 +19,11 @@ Highway through the Dragger Zone
       initialScale = null
       center = null
 
+      Actions ->
+        items: items
+        item: activeItem
+        view: activeView
+
       $element.bind
         "touchstart mousedown": (event) ->
           $target = $(target = event.target)
@@ -26,7 +32,7 @@ Highway through the Dragger Zone
 
             active = true
             activeView = target
-            activeItem = items()[$(".items img").index(target)]
+            activeItem = items.get $(".items img").index(target)
             center = activeItem.center()
 
             $(debugPoint).css
@@ -51,6 +57,9 @@ Highway through the Dragger Zone
         "touchmove mousemove": (event) ->
           return unless active
           p = localPosition(event)
+
+          # TODO: Need to use more generalized transform concatenation to allow 
+          # scale and rotation to occur independently
 
           if initialScale
             initialVec = startPosition.subtract center

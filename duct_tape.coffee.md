@@ -4,10 +4,13 @@ Duct Tape
     global.Observable = require "observable"
     Point = require "point"
 
-    Point::scale = (x, y) ->
-      y ?= x
+    Point::scale = (width, height) ->
+      if typeof width is "object"
+        {width, height} = width
 
-      Point(@x * x, @y * y)
+      height ?= width
+
+      Point(@x * width, @y * height)
 
     Point::abs = ->
       Point(Math.abs(@x), Math.abs(@y))
