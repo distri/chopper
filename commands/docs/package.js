@@ -222,7 +222,7 @@
     },
     "main.coffee.md": {
       "path": "main.coffee.md",
-      "content": "Chopper\n=======\n\nChop up images in the chop shop.\n\n    window.focus()\n    require \"./duct_tape\"\n\n    Observable = require \"observable\"\n    {applyStylesheet} = require \"util\"\n\n    drop = require \"./lib/drop\"\n    paste = require \"./lib/paste\"\n\n    applyStylesheet require \"./style\"\n\n    global.items = Observable []\n\n    require \"./state_loader\"\n\n    Dragzone = require \"./lib/dragzone\"\n\n    Dragzone($(\"body\"), items)\n\n    template = require \"./templates/view\"\n    document.body.appendChild template\n      items: items\n\n    helpTemplate = require \"./templates/help\"\n    document.body.appendChild helpTemplate require \"./hotkey_actions\"\n\n    Item = require \"./item\"\n\n    handler = (file) ->\n      addImage URL.createObjectURL(file)\n\n    drop document.querySelector(\"html\"), handler\n\n    paste document,\n      callback: handler\n\n    global.appData = ->\n      JSON.stringify items().map (item) ->\n        item.toJSON()\n",
+      "content": "Chopper\n=======\n\nChop up images in the chop shop.\n\n    window.focus()\n    require \"./duct_tape\"\n\n    Observable = require \"observable\"\n    {applyStylesheet} = require \"util\"\n\n    drop = require \"./lib/drop\"\n    paste = require \"./lib/paste\"\n\n    applyStylesheet require \"./style\"\n\n    global.editor = require(\"./editor\")()\n\n    require(\"./state_loader\")(editor)\n\n    Dragzone = require \"./lib/dragzone\"\n\n    Dragzone($(\"body\"), editor.items)\n\n    template = require \"./templates/editor\"\n    document.body.appendChild template editor\n\n    Item = require \"./item\"\n\n    handler = (file) ->\n      addImage URL.createObjectURL(file)\n\n    drop document.querySelector(\"html\"), handler\n\n    paste document,\n      callback: handler\n\n    global.appData = ->\n      JSON.stringify editor.items().map (item) ->\n        item.toJSON()\n",
       "mode": "100644",
       "type": "blob"
     },
@@ -240,7 +240,7 @@
     },
     "state_loader.coffee.md": {
       "path": "state_loader.coffee.md",
-      "content": "State Loader\n============\n\n    Item = require \"./item\"\n\nFirst we get our state passed in from the ENV otherwise we use the location hash.\n\n    global.ENV ?= {}\n\n    ENV.APP_STATE ?= location.hash.substring(1)\n\n    if data = ENV.APP_STATE\n      items JSON.parse(data).map Item\n    else\n\nOtherwise we get one from S3\n\n      S3Load = require \"./s3load\"\n      S3Load(\"http://addressable.s3.amazonaws.com/?prefix=uploads\")\n      .then (data) ->\n        data.map (datum) ->\n          \"http://addressable.s3.amazonaws.com/#{datum}\"\n        .map (src) ->\n          items.push Item\n            src: src\n\n        console.log appData()\n",
+      "content": "State Loader\n============\n\nFirst we get our state passed in from the ENV otherwise we use the location hash.\n\nOtherwise we get one from S3\n\n    module.exports = (editor) ->\n      global.ENV ?= {}\n  \n      ENV.APP_STATE ?= location.hash.substring(1)\n  \n      if data = ENV.APP_STATE\n        editor.load JSON.parse(data)\n      else\n        S3Load = require \"./s3load\"\n        S3Load(\"http://addressable.s3.amazonaws.com/?prefix=uploads\")\n        .then (data) ->\n          data.map (datum) ->\n            \"http://addressable.s3.amazonaws.com/#{datum}\"\n          .map (src) ->\n            src: src\n        .then (data) ->\n          editor.load data\n",
       "mode": "100644",
       "type": "blob"
     },
@@ -270,6 +270,16 @@
     "lib/command.coffee.md": {
       "path": "lib/command.coffee.md",
       "content": "Command\n=======\n\n    {extend} = require \"util\"\n\nCommands that can be done/undone in the editor.\n\n    module.exports = (I={}, self) ->\n      self.Command =\n\nEach command to inherits a toJSON method and registers itself to be \nde-serialized by name.\n\n*IMPORTANT:* If the names change then old command data may fail to load in newer\nversions.\n\n        register: (name, constructor) ->\n          self.Command[name] = (data={}) ->\n            data = extend {}, data\n            data.name = name\n  \n            command = constructor(data)\n  \n            command.toJSON ?= ->\n              # TODO: May want to return a copy of the data to be super-duper safe\n              data\n  \n            return command\n\n        parse: (commandData) ->\n          self.Command[commandData.name](commandData)\n\n      return self\n",
+      "mode": "100644"
+    },
+    "editor.coffee.md": {
+      "path": "editor.coffee.md",
+      "content": "Editor\n======\n\n    Item = require \"./item\"\n\n    Composition = require \"composition\"\n\n    Command = require \"./command\"\n\n    module.exports = (I={}) ->\n      self = Composition(I)\n\n      self.include Command\n\n      self.extend\n        items: Observable []\n\n        load: (data) ->\n          self.items data.map Item\n\n      return self\n",
+      "mode": "100644"
+    },
+    "templates/editor.haml": {
+      "path": "templates/editor.haml",
+      "content": "= require(\"./view\")(this)\n= require(\"./help\")(require \"../hotkey_actions\")\n",
       "mode": "100644"
     }
   },
@@ -311,7 +321,7 @@
     },
     "main": {
       "path": "main",
-      "content": "(function() {\n  var Dragzone, Item, Observable, applyStylesheet, drop, handler, helpTemplate, paste, template;\n\n  window.focus();\n\n  require(\"./duct_tape\");\n\n  Observable = require(\"observable\");\n\n  applyStylesheet = require(\"util\").applyStylesheet;\n\n  drop = require(\"./lib/drop\");\n\n  paste = require(\"./lib/paste\");\n\n  applyStylesheet(require(\"./style\"));\n\n  global.items = Observable([]);\n\n  require(\"./state_loader\");\n\n  Dragzone = require(\"./lib/dragzone\");\n\n  Dragzone($(\"body\"), items);\n\n  template = require(\"./templates/view\");\n\n  document.body.appendChild(template({\n    items: items\n  }));\n\n  helpTemplate = require(\"./templates/help\");\n\n  document.body.appendChild(helpTemplate(require(\"./hotkey_actions\")));\n\n  Item = require(\"./item\");\n\n  handler = function(file) {\n    return addImage(URL.createObjectURL(file));\n  };\n\n  drop(document.querySelector(\"html\"), handler);\n\n  paste(document, {\n    callback: handler\n  });\n\n  global.appData = function() {\n    return JSON.stringify(items().map(function(item) {\n      return item.toJSON();\n    }));\n  };\n\n}).call(this);\n",
+      "content": "(function() {\n  var Dragzone, Item, Observable, applyStylesheet, drop, handler, paste, template;\n\n  window.focus();\n\n  require(\"./duct_tape\");\n\n  Observable = require(\"observable\");\n\n  applyStylesheet = require(\"util\").applyStylesheet;\n\n  drop = require(\"./lib/drop\");\n\n  paste = require(\"./lib/paste\");\n\n  applyStylesheet(require(\"./style\"));\n\n  global.editor = require(\"./editor\")();\n\n  require(\"./state_loader\")(editor);\n\n  Dragzone = require(\"./lib/dragzone\");\n\n  Dragzone($(\"body\"), editor.items);\n\n  template = require(\"./templates/editor\");\n\n  document.body.appendChild(template(editor));\n\n  Item = require(\"./item\");\n\n  handler = function(file) {\n    return addImage(URL.createObjectURL(file));\n  };\n\n  drop(document.querySelector(\"html\"), handler);\n\n  paste(document, {\n    callback: handler\n  });\n\n  global.appData = function() {\n    return JSON.stringify(editor.items().map(function(item) {\n      return item.toJSON();\n    }));\n  };\n\n}).call(this);\n",
       "type": "blob"
     },
     "pixie": {
@@ -326,7 +336,7 @@
     },
     "state_loader": {
       "path": "state_loader",
-      "content": "(function() {\n  var Item, S3Load, data;\n\n  Item = require(\"./item\");\n\n  if (global.ENV == null) {\n    global.ENV = {};\n  }\n\n  if (ENV.APP_STATE == null) {\n    ENV.APP_STATE = location.hash.substring(1);\n  }\n\n  if (data = ENV.APP_STATE) {\n    items(JSON.parse(data).map(Item));\n  } else {\n    S3Load = require(\"./s3load\");\n    S3Load(\"http://addressable.s3.amazonaws.com/?prefix=uploads\").then(function(data) {\n      data.map(function(datum) {\n        return \"http://addressable.s3.amazonaws.com/\" + datum;\n      }).map(function(src) {\n        return items.push(Item({\n          src: src\n        }));\n      });\n      return console.log(appData());\n    });\n  }\n\n}).call(this);\n",
+      "content": "(function() {\n  module.exports = function(editor) {\n    var S3Load, data;\n    if (global.ENV == null) {\n      global.ENV = {};\n    }\n    if (ENV.APP_STATE == null) {\n      ENV.APP_STATE = location.hash.substring(1);\n    }\n    if (data = ENV.APP_STATE) {\n      return editor.load(JSON.parse(data));\n    } else {\n      S3Load = require(\"./s3load\");\n      return S3Load(\"http://addressable.s3.amazonaws.com/?prefix=uploads\").then(function(data) {\n        return data.map(function(datum) {\n          return \"http://addressable.s3.amazonaws.com/\" + datum;\n        }).map(function(src) {\n          return {\n            src: src\n          };\n        });\n      }).then(function(data) {\n        return editor.load(data);\n      });\n    }\n  };\n\n}).call(this);\n",
       "type": "blob"
     },
     "style": {
@@ -352,6 +362,16 @@
     "lib/command": {
       "path": "lib/command",
       "content": "(function() {\n  var extend;\n\n  extend = require(\"util\").extend;\n\n  module.exports = function(I, self) {\n    if (I == null) {\n      I = {};\n    }\n    self.Command = {\n      register: function(name, constructor) {\n        return self.Command[name] = function(data) {\n          var command;\n          if (data == null) {\n            data = {};\n          }\n          data = extend({}, data);\n          data.name = name;\n          command = constructor(data);\n          if (command.toJSON == null) {\n            command.toJSON = function() {\n              return data;\n            };\n          }\n          return command;\n        };\n      },\n      parse: function(commandData) {\n        return self.Command[commandData.name](commandData);\n      }\n    };\n    return self;\n  };\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "editor": {
+      "path": "editor",
+      "content": "(function() {\n  var Command, Composition, Item;\n\n  Item = require(\"./item\");\n\n  Composition = require(\"composition\");\n\n  Command = require(\"./command\");\n\n  module.exports = function(I) {\n    var self;\n    if (I == null) {\n      I = {};\n    }\n    self = Composition(I);\n    self.include(Command);\n    self.extend({\n      items: Observable([]),\n      load: function(data) {\n        return self.items(data.map(Item));\n      }\n    });\n    return self;\n  };\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "templates/editor": {
+      "path": "templates/editor",
+      "content": "Runtime = require(\"/_lib/hamljr_runtime\");\n\nmodule.exports = (function(data) {\n  return (function() {\n    var __runtime;\n    __runtime = Runtime(this);\n    __runtime.push(document.createDocumentFragment());\n    __runtime.text(require(\"./view\")(this));\n    __runtime.text(require(\"./help\")(require(\"../hotkey_actions\")));\n    return __runtime.pop();\n  }).call(data);\n});\n",
       "type": "blob"
     },
     "_lib/hamljr_runtime": {

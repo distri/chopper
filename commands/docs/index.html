@@ -46,20 +46,16 @@ paste = require <span class="string">"./lib/paste"</span>
 
 applyStylesheet require <span class="string">"./style"</span>
 
-global.items = Observable []
+global.editor = require(<span class="string">"./editor"</span>)()
 
-require <span class="string">"./state_loader"</span>
+require(<span class="string">"./state_loader"</span>)(editor)
 
 Dragzone = require <span class="string">"./lib/dragzone"</span>
 
-Dragzone($(<span class="string">"body"</span>), items)
+Dragzone($(<span class="string">"body"</span>), editor.items)
 
-template = require <span class="string">"./templates/view"</span>
-document.body.appendChild template
-  items: items
-
-helpTemplate = require <span class="string">"./templates/help"</span>
-document.body.appendChild helpTemplate require <span class="string">"./hotkey_actions"</span>
+template = require <span class="string">"./templates/editor"</span>
+document.body.appendChild template editor
 
 Item = require <span class="string">"./item"</span>
 
@@ -72,7 +68,7 @@ paste document,
   callback: handler
 
 global.<span class="function"><span class="title">appData</span></span> = -&gt;
-  JSON.stringify items().map (item) -&gt;
+  JSON.stringify editor.items().map (item) -&gt;
     item.toJSON()</code></pre>
 </div>
         </li>

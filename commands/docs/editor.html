@@ -2,7 +2,7 @@
 
 <html>
 <head>
-  <title>main</title>
+  <title>editor</title>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
   <link rel="stylesheet" media="all" href="http://strd6.github.io/cdn/parallel/docco.css" />
@@ -18,7 +18,7 @@
               <div class="pilwrap">
                 <a class="pilcrow" href="#section-1">&#182;</a>
               </div>
-              <h1 id="chopper">Chopper</h1>
+              <h1 id="editor">Editor</h1>
 
             </div>
             <div class="content"><pre><code class="lang-coffeescript">
@@ -32,44 +32,26 @@
               <div class="pilwrap">
                 <a class="pilcrow" href="#section-2">&#182;</a>
               </div>
-              <p>Chop up images in the chop shop.</p>
-
+              
             </div>
-            <div class="content"><pre><code class="lang-coffeescript">window.focus()
-require <span class="string">"./duct_tape"</span>
+            <div class="content"><pre><code class="lang-coffeescript">Item = require <span class="string">"./item"</span>
 
-Observable = require <span class="string">"observable"</span>
-{applyStylesheet} = require <span class="string">"util"</span>
+Composition = require <span class="string">"composition"</span>
 
-drop = require <span class="string">"./lib/drop"</span>
-paste = require <span class="string">"./lib/paste"</span>
+Command = require <span class="string">"./command"</span>
 
-applyStylesheet require <span class="string">"./style"</span>
+module.<span class="function"><span class="title">exports</span></span> = (I={}) -&gt;
+  self = Composition(I)
 
-global.editor = require(<span class="string">"./editor"</span>)()
+  self.include Command
 
-require(<span class="string">"./state_loader"</span>)(editor)
+  self.extend
+    items: Observable []
 
-Dragzone = require <span class="string">"./lib/dragzone"</span>
+    load: (data) -&gt;
+      self.items data.map Item
 
-Dragzone($(<span class="string">"body"</span>), editor.items)
-
-template = require <span class="string">"./templates/editor"</span>
-document.body.appendChild template editor
-
-Item = require <span class="string">"./item"</span>
-
-<span class="function"><span class="title">handler</span></span> = (file) -&gt;
-  addImage URL.createObjectURL(file)
-
-drop document.querySelector(<span class="string">"html"</span>), handler
-
-paste document,
-  callback: handler
-
-global.<span class="function"><span class="title">appData</span></span> = -&gt;
-  JSON.stringify editor.items().map (item) -&gt;
-    item.toJSON()</code></pre>
+  <span class="keyword">return</span> self</code></pre>
 </div>
         </li>
         
