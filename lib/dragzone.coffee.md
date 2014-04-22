@@ -9,18 +9,17 @@ Highway through the Dragger Zone
 
     Actions = require "../hotkey_actions"
 
-    module.exports = ($element, items) ->
+    module.exports = ($element, editor) ->
       active = false
       activeItem = null
       activeView = null
       offset = null
       startPosition = null
-      initialRotation = null
-      initialScale = null
+      initialTransform = null
       center = null
 
       Actions ->
-        items: items
+        items: editor.items
         item: activeItem
         view: activeView
 
@@ -32,20 +31,22 @@ Highway through the Dragger Zone
 
             active = true
             activeView = target
-            activeItem = items.get $(".items img").index(target)
+            activeItem = editor.items.get $(".items img").index(target)
             center = activeItem.center()
 
             $(debugPoint).css
               top: center.y
               left: center.x
 
-            initialScale = null
-            initialRotation = null
+            initialTransform = activeItem.transform()
+
+            scaling = false
+            rotating = false
 
             if event.shiftKey
-              initialScale = activeItem.scale()
+              scaling = true
             else if event.ctrlKey or event.metaKey
-              initialRotation = activeItem.rotation()
+              rotating = true
 
             startPosition = localPosition(event)
             itemStart = activeItem.position()
@@ -58,7 +59,7 @@ Highway through the Dragger Zone
           return unless active
           p = localPosition(event)
 
-          # TODO: Need to use more generalized transform concatenation to allow 
+          # TODO: Need to use more generalized transform concatenation to allow
           # scale and rotation to occur independently
 
           if initialScale
@@ -73,7 +74,7 @@ Highway through the Dragger Zone
             deltaRotation = Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x)
             activeItem.rotation initialRotation + deltaRotation
           else
-            activeItem.position p.add offset
+            activeItem.transform initialTransform.concat(Matrix.translation(p.add offset))
 
         "touchend mouseup": (event) ->
           active = false
