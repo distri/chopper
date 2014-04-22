@@ -56,6 +56,9 @@ template = require <span class="string">"./templates/view"</span>
 document.body.appendChild template
   items: items
 
+helpTemplate = require <span class="string">"./templates/help"</span>
+document.body.appendChild helpTemplate require <span class="string">"./hotkey_actions"</span>
+
 Item = require <span class="string">"./item"</span>
 
 <span class="function"><span class="title">handler</span></span> = (file) -&gt;
