@@ -21,6 +21,7 @@ Hotkey Actions
       pageup: "raiseToTop"
       del: "delete"
       return: "duplicate"
+      "ctrl+s": "save"
 
     actions =
       displayHelp: ->
@@ -33,6 +34,13 @@ Hotkey Actions
         newItem = Item item.copy()
         newItem.position newItem.position().add(Point(20, 20))
         items.push newItem
+
+Saves to address bar for now.
+
+      save: () ->
+        data = appData()
+        console.log data, data.length
+        location.hash = data
 
 Helpers
 -------

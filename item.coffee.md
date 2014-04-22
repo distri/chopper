@@ -42,7 +42,7 @@ Item Model
       autosize = (src) ->
         img = document.createElement "img"
         img.onload = ->
-          self.size this
+          self.size Size @width, @height
 
         img.src = src
 

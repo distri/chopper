@@ -16,6 +16,8 @@ Chop up images in the chop shop.
 
     global.items = Observable []
 
+    require "./state_loader"
+
     Dragzone = require "./lib/dragzone"
 
     Dragzone($("body"), items)
@@ -37,17 +39,6 @@ Chop up images in the chop shop.
     paste document,
       callback: handler
 
-    S3Load = require "./s3load"
-    S3Load("http://addressable.s3.amazonaws.com/?prefix=uploads")
-    .then (data) ->
-      data.map (datum) ->
-        "http://addressable.s3.amazonaws.com/#{datum}"
-      .map (src) ->
-        items.push Item
-          src: src
-
-      console.log appData()
-
     global.appData = ->
-      JSON.stringify items.map (item) ->
-        item.I
+      JSON.stringify items().map (item) ->
+        item.toJSON()
