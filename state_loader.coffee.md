@@ -12,7 +12,6 @@ First we get our state passed in from the ENV otherwise we use the location hash
     if data = ENV.APP_STATE
       items JSON.parse(data).map Item
     else
-      
 
 Otherwise we get one from S3
 
@@ -24,5 +23,5 @@ Otherwise we get one from S3
         .map (src) ->
           items.push Item
             src: src
-  
+
         console.log appData()

@@ -31,7 +31,7 @@ Item Model
 
       scale = ->
         {x, y} = self.scale()
-        
+
         "scale(#{x},#{y})"
 
       if navigator.userAgent.match /WebKit/
