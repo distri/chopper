@@ -2,7 +2,7 @@
 
 <html>
 <head>
-  <title>hotkey_actions</title>
+  <title>state_loader</title>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
   <link rel="stylesheet" media="all" href="http://strd6.github.io/cdn/parallel/docco.css" />
@@ -18,7 +18,7 @@
               <div class="pilwrap">
                 <a class="pilcrow" href="#section-1">&#182;</a>
               </div>
-              <h1 id="hotkey-actions">Hotkey Actions</h1>
+              <h1 id="state-loader">State Loader</h1>
 
             </div>
             <div class="content"><pre><code class="lang-coffeescript">
@@ -34,39 +34,7 @@
               </div>
               
             </div>
-            <div class="content"><pre><code class="lang-coffeescript">require <span class="string">"jquery-hotkeys"</span>
-
-Item = require <span class="string">"./item"</span>
-Point = require <span class="string">"point"</span>
-
-module.exports = <span class="function"><span class="title">Actions</span></span> = (state) -&gt;
-  Object.keys(bindings).forEach (hotkey) -&gt;
-    $(document).<span class="literal">on</span> <span class="string">"keydown"</span>, <span class="literal">null</span>, hotkey, (event) -&gt;
-      event.preventDefault()
-
-      actions[bindings[hotkey]](state())
-
-Actions.<span class="function"><span class="title">hotkeys</span></span> = -&gt;
-  objectToArray(bindings)
-
-bindings =
-  f1: <span class="string">"displayHelp"</span>
-  pageup: <span class="string">"raiseToTop"</span>
-  del: <span class="string">"delete"</span>
-  <span class="keyword">return</span>: <span class="string">"duplicate"</span>
-  <span class="string">"ctrl+s"</span>: <span class="string">"save"</span>
-
-actions =
-  displayHelp: -&gt;
-    $(<span class="string">".help"</span>).toggleClass(<span class="string">"up"</span>)
-  raiseToTop: ({item, view, items}) -&gt;
-    items.push items.remove item
-  <span class="keyword">delete</span>: ({item, view, items}) -&gt;
-    items.remove item
-  duplicate: ({item, view, items}) -&gt;
-    newItem = Item item.copy()
-    newItem.position newItem.position().add(Point(<span class="number">20</span>, <span class="number">20</span>))
-    items.push newItem</code></pre>
+            <div class="content"><pre><code class="lang-coffeescript">Item = require <span class="string">"./item"</span></code></pre>
 </div>
         </li>
         
@@ -76,13 +44,16 @@ actions =
               <div class="pilwrap">
                 <a class="pilcrow" href="#section-3">&#182;</a>
               </div>
-              <p>Saves to address bar for now.</p>
+              <p>First we get our state passed in from the ENV otherwise we use the location hash.</p>
 
             </div>
-            <div class="content"><pre><code class="lang-coffeescript">  save: () -&gt;
-    data = appData()
-    console.log data, data.length
-    location.hash = data</code></pre>
+            <div class="content"><pre><code class="lang-coffeescript">global.ENV ?= {}
+
+ENV.APP_STATE ?= location.hash.substring(<span class="number">1</span>)
+
+<span class="keyword">if</span> data = ENV.APP_STATE
+  items JSON.parse(data).map Item
+<span class="keyword">else</span></code></pre>
 </div>
         </li>
         
@@ -92,25 +63,19 @@ actions =
               <div class="pilwrap">
                 <a class="pilcrow" href="#section-4">&#182;</a>
               </div>
-              <h2 id="helpers">Helpers</h2>
+              <p>Otherwise we get one from S3</p>
 
             </div>
-            <div class="content"><pre><code class="lang-coffeescript">
-</code></pre>
-</div>
-        </li>
-        
-        
-        <li id="section-5">
-            <div class="annotation">
-              <div class="pilwrap">
-                <a class="pilcrow" href="#section-5">&#182;</a>
-              </div>
-              
-            </div>
-            <div class="content"><pre><code class="lang-coffeescript"><span class="function"><span class="title">objectToArray</span></span> = (object) -&gt;
-  Object.keys(object).map (key) -&gt;
-    [key, object[key]]</code></pre>
+            <div class="content"><pre><code class="lang-coffeescript">  S3Load = require <span class="string">"./s3load"</span>
+  S3Load(<span class="string">"http://addressable.s3.amazonaws.com/?prefix=uploads"</span>)
+  .<span class="keyword">then</span> (data) -&gt;
+    data.map (datum) -&gt;
+      <span class="string">"http://addressable.s3.amazonaws.com/<span class="subst">#{datum}</span>"</span>
+    .map (src) -&gt;
+      items.push Item
+        src: src
+
+    console.log appData()</code></pre>
 </div>
         </li>
         

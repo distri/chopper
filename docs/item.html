@@ -75,7 +75,7 @@ module.<span class="function"><span class="title">exports</span></span> = (I={})
   <span class="function"><span class="title">autosize</span></span> = (src) -&gt;
     img = document.createElement <span class="string">"img"</span>
     img.<span class="function"><span class="title">onload</span></span> = -&gt;
-      self.size <span class="keyword">this</span>
+      self.size Size <span class="property">@width</span>, <span class="property">@height</span>
 
     img.src = src
 
