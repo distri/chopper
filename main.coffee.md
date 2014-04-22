@@ -24,6 +24,9 @@ Chop up images in the chop shop.
     document.body.appendChild template
       items: items
 
+    helpTemplate = require "./templates/help"
+    document.body.appendChild helpTemplate require "./hotkey_actions"
+
     Item = require "./item"
 
     handler = (file) ->

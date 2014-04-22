@@ -1,0 +1,17 @@
+.help
+  %h2 Mouse Commands
+  .row
+    .key Click
+    .command Move Object
+  .row
+    .key Shift + Click
+    .command Scale Object
+  .row
+    .key Ctrl + Click
+    .command Rotate Object
+
+  %h2 Keyboard Commands
+  - each @hotkeys(), ([key, command]) ->
+    .row
+      .key= key
+      .command= command
