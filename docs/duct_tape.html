@@ -37,10 +37,13 @@
             <div class="content"><pre><code class="lang-coffeescript">global.Observable = require <span class="string">"observable"</span>
 Point = require <span class="string">"point"</span>
 
-Point::<span class="function"><span class="title">scale</span></span> = (x, y) -&gt;
-  y ?= x
+Point::<span class="function"><span class="title">scale</span></span> = (width, height) -&gt;
+  <span class="keyword">if</span> <span class="keyword">typeof</span> width <span class="keyword">is</span> <span class="string">"object"</span>
+    {width, height} = width
 
-  Point(<span class="property">@x</span> * x, <span class="property">@y</span> * y)
+  height ?= width
+
+  Point(<span class="property">@x</span> * width, <span class="property">@y</span> * height)
 
 Point::<span class="function"><span class="title">abs</span></span> = -&gt;
   Point(Math.abs(<span class="property">@x</span>), Math.abs(<span class="property">@y</span>))</code></pre>

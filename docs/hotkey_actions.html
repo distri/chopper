@@ -37,15 +37,19 @@
             <div class="content"><pre><code class="lang-coffeescript">require <span class="string">"jquery-hotkeys"</span>
 
 Item = require <span class="string">"./item"</span>
+Point = require <span class="string">"point"</span>
 
 module.<span class="function"><span class="title">exports</span></span> = (state) -&gt;
+  console.log <span class="string">"yolololo"</span>
   Object.keys(bindings).forEach (hotkey) -&gt;
     $(document).<span class="literal">on</span> <span class="string">"keydown"</span>, <span class="literal">null</span>, hotkey, -&gt;
+      console.log <span class="string">"dudereredre"</span>
       actions[bindings[hotkey]](state())
 
 bindings =
   pageup: <span class="string">"raiseToTop"</span>
-  <span class="keyword">delete</span>: <span class="string">"delete"</span>
+  del: <span class="string">"delete"</span>
+  <span class="keyword">return</span>: <span class="string">"duplicate"</span>
 
 actions =
   raiseToTop: ({item, view, items}) -&gt;
@@ -53,7 +57,7 @@ actions =
   <span class="keyword">delete</span>: ({item, view, items}) -&gt;
     items.remove item
   duplicate: ({item, view, items}) -&gt;
-    newItem = item.copy()
+    newItem = Item item.copy()
     newItem.position newItem.position().add(Point(<span class="number">20</span>, <span class="number">20</span>))
     items.push newItem</code></pre>
 </div>

@@ -40,6 +40,7 @@ debugPoint = document.createElement <span class="string">"div"</span>
 debugPoint.className = <span class="string">"point"</span>
 document.body.appendChild debugPoint
 
+Actions = require <span class="string">"../hotkey_actions"</span>
 
 module.<span class="function"><span class="title">exports</span></span> = ($element, items) -&gt;
   active = <span class="literal">false</span>
@@ -51,6 +52,11 @@ module.<span class="function"><span class="title">exports</span></span> = ($elem
   initialScale = <span class="literal">null</span>
   center = <span class="literal">null</span>
 
+  Actions -&gt;
+    items: items
+    item: activeItem
+    view: activeView
+
   $element.bind
     <span class="string">"touchstart mousedown"</span>: (event) -&gt;
       $target = $(target = event.target)
@@ -59,7 +65,7 @@ module.<span class="function"><span class="title">exports</span></span> = ($elem
 
         active = <span class="literal">true</span>
         activeView = target
-        activeItem = items()[$(<span class="string">".items img"</span>).index(target)]
+        activeItem = items.get $(<span class="string">".items img"</span>).index(target)
         center = activeItem.center()
 
         $(debugPoint).css
@@ -84,6 +90,9 @@ module.<span class="function"><span class="title">exports</span></span> = ($elem
     <span class="string">"touchmove mousemove"</span>: (event) -&gt;
       <span class="keyword">return</span> <span class="keyword">unless</span> active
       p = localPosition(event)
+
+      <span class="comment"># TODO: Need to use more generalized transform concatenation to allow </span>
+      <span class="comment"># scale and rotation to occur independently</span>
 
       <span class="keyword">if</span> initialScale
         initialVec = startPosition.subtract center
