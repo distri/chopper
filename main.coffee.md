@@ -14,20 +14,16 @@ Chop up images in the chop shop.
 
     applyStylesheet require "./style"
 
-    global.items = Observable []
+    global.editor = require("./editor")()
 
-    require "./state_loader"
+    require("./state_loader")(editor)
 
     Dragzone = require "./lib/dragzone"
 
-    Dragzone($("body"), items)
+    Dragzone($("body"), editor.items)
 
-    template = require "./templates/view"
-    document.body.appendChild template
-      items: items
-
-    helpTemplate = require "./templates/help"
-    document.body.appendChild helpTemplate require "./hotkey_actions"
+    template = require "./templates/editor"
+    document.body.appendChild template editor
 
     Item = require "./item"
 
@@ -40,5 +36,5 @@ Chop up images in the chop shop.
       callback: handler
 
     global.appData = ->
-      JSON.stringify items().map (item) ->
+      JSON.stringify editor.items().map (item) ->
         item.toJSON()
