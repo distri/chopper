@@ -2,7 +2,7 @@
 
 <html>
 <head>
-  <title>hotkey_actions</title>
+  <title>lib/command</title>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
   <link rel="stylesheet" media="all" href="http://strd6.github.io/cdn/parallel/docco.css" />
@@ -18,7 +18,7 @@
               <div class="pilwrap">
                 <a class="pilcrow" href="#section-1">&#182;</a>
               </div>
-              <h1 id="hotkey-actions">Hotkey Actions</h1>
+              <h1 id="command">Command</h1>
 
             </div>
             <div class="content"><pre><code class="lang-coffeescript">
@@ -34,45 +34,7 @@
               </div>
               
             </div>
-            <div class="content"><pre><code class="lang-coffeescript">require <span class="string">"jquery-hotkeys"</span>
-
-Item = require <span class="string">"./item"</span>
-Point = require <span class="string">"point"</span>
-
-module.exports = <span class="function"><span class="title">Actions</span></span> = (state) -&gt;
-  Object.keys(bindings).forEach (hotkey) -&gt;
-    $(document).<span class="literal">on</span> <span class="string">"keydown"</span>, <span class="literal">null</span>, hotkey, (event) -&gt;
-      event.preventDefault()
-
-      actions[bindings[hotkey]](state())
-
-Actions.<span class="function"><span class="title">hotkeys</span></span> = -&gt;
-  objectToArray(bindings)
-
-bindings =
-  f1: <span class="string">"displayHelp"</span>
-  pageup: <span class="string">"raiseToTop"</span>
-  del: <span class="string">"delete"</span>
-  <span class="keyword">return</span>: <span class="string">"duplicate"</span>
-  <span class="string">"ctrl+s"</span>: <span class="string">"save"</span>
-  <span class="string">"ctrl+z"</span>: <span class="string">"undo"</span>
-  <span class="string">"ctrl+y"</span>: <span class="string">"redo"</span>
-
-actions =
-  displayHelp: -&gt;
-    $(<span class="string">".help"</span>).toggleClass(<span class="string">"up"</span>)
-  raiseToTop: ({item, view, items}) -&gt;
-    items.push items.remove item
-  <span class="keyword">delete</span>: ({item, view, items}) -&gt;
-    items.remove item
-  duplicate: ({item, view, items}) -&gt;
-    newItem = Item item.copy()
-    newItem.position newItem.position().add(Point(<span class="number">20</span>, <span class="number">20</span>))
-    items.push newItem
-  undo: ({editor}) -&gt;
-    editor.undo()
-  redo: ({editor}) -&gt;
-    editor.redo()</code></pre>
+            <div class="content"><pre><code class="lang-coffeescript">{extend} = require <span class="string">"util"</span></code></pre>
 </div>
         </li>
         
@@ -82,13 +44,11 @@ actions =
               <div class="pilwrap">
                 <a class="pilcrow" href="#section-3">&#182;</a>
               </div>
-              <p>Saves to address bar for now.</p>
+              <p>Commands that can be done/undone in the editor.</p>
 
             </div>
-            <div class="content"><pre><code class="lang-coffeescript">  save: () -&gt;
-    data = appData()
-    console.log data, data.length
-    location.hash = data</code></pre>
+            <div class="content"><pre><code class="lang-coffeescript">module.<span class="function"><span class="title">exports</span></span> = (I={}, self) -&gt;
+  self.Command =</code></pre>
 </div>
         </li>
         
@@ -98,25 +58,29 @@ actions =
               <div class="pilwrap">
                 <a class="pilcrow" href="#section-4">&#182;</a>
               </div>
-              <h2 id="helpers">Helpers</h2>
+              <p>Each command to inherits a toJSON method and registers itself to be
+de-serialized by name.</p>
+<p><em>IMPORTANT:</em> If the names change then old command data may fail to load in newer
+versions.</p>
 
             </div>
-            <div class="content"><pre><code class="lang-coffeescript">
-</code></pre>
-</div>
-        </li>
-        
-        
-        <li id="section-5">
-            <div class="annotation">
-              <div class="pilwrap">
-                <a class="pilcrow" href="#section-5">&#182;</a>
-              </div>
-              
-            </div>
-            <div class="content"><pre><code class="lang-coffeescript"><span class="function"><span class="title">objectToArray</span></span> = (object) -&gt;
-  Object.keys(object).map (key) -&gt;
-    [key, object[key]]</code></pre>
+            <div class="content"><pre><code class="lang-coffeescript">    register: (name, constructor) -&gt;
+      self.Command[name] = (data={}) -&gt;
+        data = extend {}, data
+        data.name = name
+
+        command = constructor(data)
+
+        command.toJSON ?= -&gt;
+          <span class="comment"># TODO: May want to return a copy of the data to be super-duper safe</span>
+          data
+
+        <span class="keyword">return</span> command
+
+    parse: (commandData) -&gt;
+      self.Command[commandData.name](commandData)
+
+  <span class="keyword">return</span> self</code></pre>
 </div>
         </li>
         
@@ -258,6 +222,6 @@ actions =
 
 }).call(this);
 
-</script><script src="package.js"></script>
+</script><script src="../package.js"></script>
 </body>
 </html>

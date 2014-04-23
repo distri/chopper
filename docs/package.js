@@ -178,91 +178,155 @@
       "mode": "100644",
       "type": "blob"
     },
-    "main.coffee.md": {
-      "path": "main.coffee.md",
-      "content": "Chopper\n=======\n\nChop up images in the chop shop.\n\n    window.focus()\n    require \"./duct_tape\"\n\n    Observable = require \"observable\"\n    {applyStylesheet} = require \"util\"\n\n    drop = require \"./lib/drop\"\n    paste = require \"./lib/paste\"\n\n    applyStylesheet require \"./style\"\n\n    global.items = Observable []\n\n    require \"./state_loader\"\n\n    Dragzone = require \"./lib/dragzone\"\n\n    Dragzone($(\"body\"), items)\n\n    template = require \"./templates/view\"\n    document.body.appendChild template\n      items: items\n\n    helpTemplate = require \"./templates/help\"\n    document.body.appendChild helpTemplate require \"./hotkey_actions\"\n\n    Item = require \"./item\"\n\n    handler = (file) ->\n      addImage URL.createObjectURL(file)\n\n    drop document.querySelector(\"html\"), handler\n\n    paste document,\n      callback: handler\n\n    global.appData = ->\n      JSON.stringify items().map (item) ->\n        item.toJSON()\n",
-      "mode": "100644"
+    "TODO.md": {
+      "path": "TODO.md",
+      "content": "TODO\n====\n\nViewport Size\n",
+      "mode": "100644",
+      "type": "blob"
     },
-    "style.styl": {
-      "path": "style.styl",
-      "content": "html\n  height: 100%\n\nbody\n  font-family: \"HelveticaNeue-Light\", \"Helvetica Neue Light\", \"Helvetica Neue\", Helvetica, Arial, \"Lucida Grande\", sans-serif\n  height: 100%\n  margin: 0\n  overflow: hidden\n  position: relative\n\n.items\n  height: 100%\n\nimg\n  position: absolute\n\n.point\n  position: absolute\n  width: 5px\n  height: 5px\n  background-color: red\n  z-index: 9000\n  display: none\n\n.help\n  color: white\n  height: 100%\n  background-color: rgba(0, 0, 0, 0.875)\n  padding: 1em\n  position: absolute\n  top: 100%\n  width: 100%\n  z-index: 9000\n\n  transition-duration: 0.3s\n\n  &.up\n    top: 0\n\n  .key\n    display: inline-block\n    font-weight: bold\n    padding-right: 20px\n    text-align: right\n    vertical-align: top\n    width: 160px\n\n  .command\n    display: inline-block\n",
-      "mode": "100644"
+    "command.coffee.md": {
+      "path": "command.coffee.md",
+      "content": "    Command = require \"./lib/command\"\n\n    module.exports = (I={}, self) ->\n      self.include Command\n\n      C = self.Command.register\n\n      # TODO: Add, Delete, Raise, Lower\n\n      C \"Transform\", (data) ->\n        data.previous ?= self.items.get(data.index).transform()\n\n        execute: ->\n          self.items.get(data.index).transform data.transform\n\n        undo: ->\n          self.items.get(data.index).transform data.previous\n\n        set: (transform) ->\n          data.transform = transform\n          @execute()\n\n      C \"Composite\", (data) ->\n        if data.commands\n          # We came from JSON so rehydrate the commands.\n          data.commands = data.commands.map self.Command.parse\n        else\n          data.commands = []\n\n        commands = data.commands\n\n        execute: ->\n          commands.invoke \"execute\"\n\n        undo: ->\n          # Undo last command first because the order matters\n          commands.copy().reverse().invoke \"undo\"\n\n        push: (command, noExecute) ->\n          # We execute commands immediately when pushed in the compound\n          # so that the effects of events during mousemove appear\n          # immediately but they are all revoked together on undo/redo\n          # Passing noExecute as true will skip executing if we are\n          # adding commands that have already executed.\n          commands.push command\n          command.execute() unless noExecute\n\n        toJSON: ->\n          extend {}, data,\n            commands: commands.invoke \"toJSON\"\n",
+      "mode": "100644",
+      "type": "blob"
     },
-    "pixie.cson": {
-      "path": "pixie.cson",
-      "content": "version: \"0.1.0\"\nremoteDependencies: [\n  \"https://code.jquery.com/jquery-1.11.0.min.js\"\n]\ndependencies:\n  composition: \"distri/compositions:v0.1.1\"\n  \"jquery-hotkeys\": \"distri/jquery-hotkeys:v0.9.2\"\n  observable: \"distri/observable:v0.1.1\"\n  point: \"distri/point:v0.2.0\"\n  util: \"distri/util:v0.1.0\"\n",
-      "mode": "100644"
+    "duct_tape.coffee.md": {
+      "path": "duct_tape.coffee.md",
+      "content": "Duct Tape\n=========\n\n    global.Observable = require \"observable\"\n    Point = require \"point\"\n    Size = require \"./lib/size\"\n    Matrix = require \"matrix\"\n\n    {sqrt} = Math\n\n    Matrix.Point = Point\n\n    Point::scale = (width, height) ->\n      if typeof width is \"object\"\n        {width, height} = width\n\n      height ?= width\n\n      Point(@x * width, @y * height)\n\n    Point::abs = ->\n      Point(Math.abs(@x), Math.abs(@y))\n\n    Matrix::scaleComponent = ->\n      Size sqrt(@a * @a + @b * @b), sqrt(@c * @c + @d * @d)\n\n    Matrix::translationComponent = ->\n      Point @tx, @ty\n\nConvert matrix to CSS string.\n\n    if navigator.userAgent.match /WebKit/\n      prefix = \"-webkit-\"\n    else\n      prefix = \"\"\n\n    Matrix::css = ->\n      \"#{prefix}transform: matrix(#{@a}, #{@b}, #{@c}, #{@d}, #{@tx}, #{@ty});\"\n\n    Matrix.translation = Matrix.translate = (x, y) ->\n      if typeof x is \"object\"\n        {x, y} = x\n\n      Matrix(1, 0, 0, 1, x, y)\n",
+      "mode": "100644",
+      "type": "blob"
+    },
+    "editor.coffee.md": {
+      "path": "editor.coffee.md",
+      "content": "Editor\n======\n\n    Item = require \"./item\"\n\n    Composition = require \"composition\"\n\n    Command = require \"./command\"\n    Undo = require \"undo\"\n\n    module.exports = (I={}) ->\n      self = Composition(I)\n\n      self.include Command, Undo\n\n      self.extend\n        items: Observable []\n\n        load: (data) ->\n          self.items data.map Item\n\n        \n\n      return self\n",
+      "mode": "100644",
+      "type": "blob"
+    },
+    "hotkey_actions.coffee.md": {
+      "path": "hotkey_actions.coffee.md",
+      "content": "Hotkey Actions\n==============\n\n    require \"jquery-hotkeys\"\n\n    Item = require \"./item\"\n    Point = require \"point\"\n\n    module.exports = Actions = (state) ->\n      Object.keys(bindings).forEach (hotkey) ->\n        $(document).on \"keydown\", null, hotkey, (event) ->\n          event.preventDefault()\n\n          actions[bindings[hotkey]](state())\n\n    Actions.hotkeys = ->\n      objectToArray(bindings)\n\n    bindings =\n      f1: \"displayHelp\"\n      pageup: \"raiseToTop\"\n      del: \"delete\"\n      return: \"duplicate\"\n      \"ctrl+s\": \"save\"\n      \"ctrl+z\": \"undo\"\n      \"ctrl+y\": \"redo\"\n\n    actions =\n      displayHelp: ->\n        $(\".help\").toggleClass(\"up\")\n      raiseToTop: ({item, view, items}) ->\n        items.push items.remove item\n      delete: ({item, view, items}) ->\n        items.remove item\n      duplicate: ({item, view, items}) ->\n        newItem = Item item.copy()\n        newItem.position newItem.position().add(Point(20, 20))\n        items.push newItem\n      undo: ({editor}) ->\n        editor.undo()\n      redo: ({editor}) ->\n        editor.redo()\n\nSaves to address bar for now.\n\n      save: () ->\n        data = appData()\n        console.log data, data.length\n        location.hash = data\n\nHelpers\n-------\n\n    objectToArray = (object) ->\n      Object.keys(object).map (key) ->\n        [key, object[key]]\n",
+      "mode": "100644",
+      "type": "blob"
+    },
+    "item.coffee.md": {
+      "path": "item.coffee.md",
+      "content": "Item Model\n==========\n\n    Composition = require \"composition\"\n    Observable = require \"observable\"\n    Point = require \"point\"\n    Matrix = require \"matrix\"\n    Size = require \"./lib/size\"\n    {extend, defaults} = require \"util\"\n\n    module.exports = (I={}) ->\n      defaults I,\n        transform: Matrix()\n        size: Size(1, 1)\n\n      self = Composition(I).extend\n        position: ->\n          self.transform().translationComponent()\n\n        copy: ->\n          extend {}, I\n\n        anchor: ->\n          Point(1, 1).scale(self.size().scale(0.5))\n\n        center: ->\n          self.anchor().add(self.position())\n\n      self.attrObservable \"transform\", \"src\", \"size\"\n\n      autosize = (src) ->\n        img = document.createElement \"img\"\n        img.onload = ->\n          self.size Size @width, @height\n\n        img.src = src\n\n      # TODO: observe src changes\n      autosize self.src()\n\n      self.css = Observable ->\n        self.transform().css()\n\n      return self\n",
+      "mode": "100644",
+      "type": "blob"
+    },
+    "lib/command.coffee.md": {
+      "path": "lib/command.coffee.md",
+      "content": "Command\n=======\n\n    {extend} = require \"util\"\n\nCommands that can be done/undone in the editor.\n\n    module.exports = (I={}, self) ->\n      self.Command =\n\nEach command to inherits a toJSON method and registers itself to be\nde-serialized by name.\n\n*IMPORTANT:* If the names change then old command data may fail to load in newer\nversions.\n\n        register: (name, constructor) ->\n          self.Command[name] = (data={}) ->\n            data = extend {}, data\n            data.name = name\n\n            command = constructor(data)\n\n            command.toJSON ?= ->\n              # TODO: May want to return a copy of the data to be super-duper safe\n              data\n\n            return command\n\n        parse: (commandData) ->\n          self.Command[commandData.name](commandData)\n\n      return self\n",
+      "mode": "100644",
+      "type": "blob"
+    },
+    "lib/dragzone.coffee.md": {
+      "path": "lib/dragzone.coffee.md",
+      "content": "Highway through the Dragger Zone\n================================\n\n    Matrix = require \"matrix\"\n    Point = require \"point\"\n\n    debugPoint = document.createElement \"div\"\n    debugPoint.className = \"point\"\n    document.body.appendChild debugPoint\n\n    Actions = require \"../hotkey_actions\"\n\n    module.exports = ($element, editor) ->\n      active = false\n      activeItem = null\n      activeView = null\n      anchor = null\n      startPosition = null\n      initialTransform = null\n      lastCommand = null\n      center = null\n      scaling = null\n      rotating = null\n\n      Actions ->\n        items: editor.items\n        item: activeItem\n        view: activeView\n        editor: editor\n\n      $element.bind\n        \"touchstart mousedown\": (event) ->\n          $target = $(target = event.target)\n          if $target.is \"img\"\n            event.preventDefault()\n\n            active = true\n            activeView = target\n            index = $(\".items img\").index(target)\n            activeItem = editor.items.get index\n            initialTransform = activeItem.transform()\n            center = activeItem.center()\n            anchor = activeItem.anchor()\n\n            lastCommand = editor.Command.Transform\n              index: index\n              transform: initialTransform\n              previous: initialTransform\n            \n            editor.execute lastCommand\n\n            $(debugPoint).css\n              top: center.y\n              left: center.x\n\n            scaling = false\n            rotating = false\n\n            if event.shiftKey\n              scaling = true\n            else if event.ctrlKey or event.metaKey\n              rotating = true\n\n            startPosition = localPosition(event)\n\n          return\n\n        \"touchmove mousemove\": (event) ->\n          return unless active\n          p = localPosition(event)\n\n          # TODO: Need to use more generalized transform concatenation to allow\n          # scale and rotation to occur independently\n\n          if scaling\n            initialVec = startPosition.subtract center\n            currentVec = p.subtract center\n            deltaTransform = Matrix.scale currentVec.x / initialVec.x, currentVec.y / initialVec.y, initialTransform.translationComponent()\n          else if rotating\n            vec = p.subtract center\n            initialVec = startPosition.subtract center\n            deltaTransform = Matrix.rotation Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x), initialTransform.translationComponent()\n          else\n            deltaTransform = Matrix.translation(p.subtract(startPosition))\n\n          if deltaTransform\n            lastCommand.set deltaTransform.concat initialTransform\n\n        \"touchend mouseup\": (event) ->\n          active = false\n\n          return\n\nHelpers\n-------\n\n    localPosition = (event) ->\n      Point event.pageX, event.pageY\n",
+      "mode": "100644",
+      "type": "blob"
     },
     "lib/drop.coffee.md": {
       "path": "lib/drop.coffee.md",
       "content": "Drop Blobs\n==========\n  \n    module.exports = (element, callback) ->\n      w(\"dragenter dragover dragleave\").forEach (name) ->\n        element.addEventListener name, stopFn\n\n      element.addEventListener 'drop', (event) ->\n        console.log \"dropping\", event\n        stopFn(event)\n\n        Array::forEach.call event.dataTransfer.files, (file) ->\n          callback(file)\n\nHelpers\n-------\n\n    w = (string) ->\n      string.split(/\\s+/)\n\n    stopFn = (event) ->\n      event.stopPropagation()\n      event.preventDefault()",
-      "mode": "100644"
+      "mode": "100644",
+      "type": "blob"
     },
     "lib/paste.coffee.md": {
       "path": "lib/paste.coffee.md",
       "content": "Paste File Reader\n=================\n\n    module.exports = (element, {matchType, callback}={}) ->\n      matchType ?= /image.*/\n\n      element.addEventListener 'paste', ({clipboardData}) ->\n        found = false\n\n        Array::forEach.call clipboardData.types, (type, i) ->\n          return if found\n  \n          if type.match(matchType) or (clipboardData.items and clipboardData.items[i].type.match(matchType))\n            file = clipboardData.items[i].getAsFile()\n  \n            callback(file)\n  \n            found = true\n",
-      "mode": "100644"
+      "mode": "100644",
+      "type": "blob"
     },
-    "lib/dragzone.coffee.md": {
-      "path": "lib/dragzone.coffee.md",
-      "content": "Highway through the Dragger Zone\n================================\n\n    Point = require \"point\"\n\n    debugPoint = document.createElement \"div\"\n    debugPoint.className = \"point\"\n    document.body.appendChild debugPoint\n\n    Actions = require \"../hotkey_actions\"\n\n    module.exports = ($element, items) ->\n      active = false\n      activeItem = null\n      activeView = null\n      offset = null\n      startPosition = null\n      initialRotation = null\n      initialScale = null\n      center = null\n\n      Actions ->\n        items: items\n        item: activeItem\n        view: activeView\n\n      $element.bind\n        \"touchstart mousedown\": (event) ->\n          $target = $(target = event.target)\n          if $target.is \"img\"\n            event.preventDefault()\n\n            active = true\n            activeView = target\n            activeItem = items.get $(\".items img\").index(target)\n            center = activeItem.center()\n\n            $(debugPoint).css\n              top: center.y\n              left: center.x\n\n            initialScale = null\n            initialRotation = null\n\n            if event.shiftKey\n              initialScale = activeItem.scale()\n            else if event.ctrlKey or event.metaKey\n              initialRotation = activeItem.rotation()\n\n            startPosition = localPosition(event)\n            itemStart = activeItem.position()\n\n            offset = itemStart.subtract startPosition\n\n          return\n\n        \"touchmove mousemove\": (event) ->\n          return unless active\n          p = localPosition(event)\n\n          # TODO: Need to use more generalized transform concatenation to allow \n          # scale and rotation to occur independently\n\n          if initialScale\n            initialVec = startPosition.subtract center\n            currentVec = p.subtract center\n            deltaScale = Point currentVec.x / initialVec.x, currentVec.y / initialVec.y\n\n            activeItem.scale Point deltaScale.x * initialScale.x, deltaScale.y * initialScale.y\n          else if initialRotation?\n            vec = p.subtract center\n            initialVec = startPosition.subtract center\n            deltaRotation = Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x)\n            activeItem.rotation initialRotation + deltaRotation\n          else\n            activeItem.position p.add offset\n\n        \"touchend mouseup\": (event) ->\n          active = false\n\n          return\n\nHelpers\n-------\n\n    localPosition = (event) ->\n      Point event.pageX, event.pageY\n",
-      "mode": "100644"
+    "lib/size.coffee.md": {
+      "path": "lib/size.coffee.md",
+      "content": "Size\n====\n\nA simple 2d extent.\n\n    Size = (width, height) ->\n      if typeof width is \"object\"\n        {width, height} = width\n\n      width: width\n      height: height\n      __proto__: Size.prototype\n\n    Size.prototype =\n      scale: (scalar) ->\n        Size(@width * scalar, @height * scalar)\n\n      toString: ->\n        \"Size(#{@width}, #{@height})\"\n\n      max: (otherSize) ->\n        Size(\n          Math.max(@width, otherSize.width)\n          Math.max(@height, otherSize.height)\n        )\n\n      each: (iterator) ->\n        [0...@height].forEach (y) ->\n          [0...@width].forEach (x) ->\n            iterator(x, y)\n\n    module.exports = Size\n",
+      "mode": "100644",
+      "type": "blob"
+    },
+    "main.coffee.md": {
+      "path": "main.coffee.md",
+      "content": "Chopper\n=======\n\nChop up images in the chop shop.\n\n    window.focus()\n    require \"./duct_tape\"\n\n    Observable = require \"observable\"\n    {applyStylesheet} = require \"util\"\n\n    drop = require \"./lib/drop\"\n    paste = require \"./lib/paste\"\n\n    applyStylesheet require \"./style\"\n\n    global.editor = require(\"./editor\")()\n\n    require(\"./state_loader\")(editor)\n\n    Dragzone = require \"./lib/dragzone\"\n\n    Dragzone($(\"body\"), editor)\n\n    template = require \"./templates/editor\"\n    document.body.appendChild template editor\n\n    Item = require \"./item\"\n\n    handler = (file) ->\n      addImage URL.createObjectURL(file)\n\n    drop document.querySelector(\"html\"), handler\n\n    paste document,\n      callback: handler\n\n    global.appData = ->\n      JSON.stringify editor.items().map (item) ->\n        item.toJSON()\n",
+      "mode": "100644",
+      "type": "blob"
+    },
+    "pixie.cson": {
+      "path": "pixie.cson",
+      "content": "version: \"0.1.0\"\nremoteDependencies: [\n  \"https://code.jquery.com/jquery-1.11.0.min.js\"\n]\ndependencies:\n  composition: \"distri/compositions:v0.1.1\"\n  \"jquery-hotkeys\": \"distri/jquery-hotkeys:v0.9.2\"\n  matrix: \"distri/matrix:v0.3.1\"\n  observable: \"distri/observable:v0.1.1\"\n  point: \"distri/point:v0.2.0\"\n  undo: \"distri/undo:v0.2.0\"\n  util: \"distri/util:v0.1.0\"\n",
+      "mode": "100644",
+      "type": "blob"
     },
     "s3load.coffee.md": {
       "path": "s3load.coffee.md",
       "content": "List Bucket Contents from S3\n============================\n\n    module.exports = (url) ->\n      $.get(url).then (data) ->\n        $(data).find(\"Key\").map ->\n          this.innerHTML\n        .get()\n",
-      "mode": "100644"
+      "mode": "100644",
+      "type": "blob"
     },
-    "item.coffee.md": {
-      "path": "item.coffee.md",
-      "content": "Item Model\n==========\n\n    Composition = require \"composition\"\n    Observable = require \"observable\"\n    Point = require \"point\"\n    Size = require \"./lib/size\"\n    {extend, defaults} = require \"util\"\n\n    module.exports = (I={}) ->\n      defaults I,\n        position: Point(0, 0)\n        scale: Point(1, 1)\n        rotation: 0\n        size: Size(0, 0)\n\n      self = Composition(I).extend\n        copy: ->\n          extend {}, I\n        center: ->\n          size = Point(1, 1).scale(self.size()).scale(0.5)\n\n          self.position().add(size)\n\n      self.attrObservable \"position\", \"rotation\", \"scale\", \"size\", \"src\"\n\n      translation = ->\n        {x, y} = self.position()\n\n        \"translate(#{x}px, #{y}px)\"\n\n      scale = ->\n        {x, y} = self.scale()\n        \n        \"scale(#{x},#{y})\"\n\n      if navigator.userAgent.match /WebKit/\n        prefix = \"-webkit-\"\n      else\n        prefix = \"\"\n\n      autosize = (src) ->\n        img = document.createElement \"img\"\n        img.onload = ->\n          self.size Size @width, @height\n\n        img.src = src\n\n      # TODO: observe src changes\n      autosize self.src()\n\n      self.css = Observable ->\n        \"#{prefix}transform: #{translation()} #{scale()} rotate(#{self.rotation()}rad);\"\n\n      return self\n",
-      "mode": "100644"
+    "state_loader.coffee.md": {
+      "path": "state_loader.coffee.md",
+      "content": "State Loader\n============\n\nFirst we get our state passed in from the ENV otherwise we use the location hash.\n\nOtherwise we get one from S3\n\n    module.exports = (editor) ->\n      global.ENV ?= {}\n\n      ENV.APP_STATE ?= location.hash.substring(1)\n\n      if data = ENV.APP_STATE\n        editor.load JSON.parse(data)\n      else\n        S3Load = require \"./s3load\"\n        S3Load(\"http://addressable.s3.amazonaws.com/?prefix=uploads\")\n        .then (data) ->\n          data.map (datum) ->\n            \"http://addressable.s3.amazonaws.com/#{datum}\"\n          .map (src) ->\n            src: src\n        .then (data) ->\n          editor.load data\n",
+      "mode": "100644",
+      "type": "blob"
     },
-    "duct_tape.coffee.md": {
-      "path": "duct_tape.coffee.md",
-      "content": "Duct Tape\n=========\n\n    global.Observable = require \"observable\"\n    Point = require \"point\"\n\n    Point::scale = (width, height) ->\n      if typeof width is \"object\"\n        {width, height} = width\n\n      height ?= width\n\n      Point(@x * width, @y * height)\n\n    Point::abs = ->\n      Point(Math.abs(@x), Math.abs(@y))\n",
-      "mode": "100644"
+    "style.styl": {
+      "path": "style.styl",
+      "content": "html\n  height: 100%\n\nbody\n  font-family: \"HelveticaNeue-Light\", \"Helvetica Neue Light\", \"Helvetica Neue\", Helvetica, Arial, \"Lucida Grande\", sans-serif\n  height: 100%\n  margin: 0\n  overflow: hidden\n  position: relative\n\n.items\n  height: 100%\n\nimg\n  position: absolute\n\n.point\n  position: absolute\n  width: 5px\n  height: 5px\n  background-color: red\n  z-index: 9000\n\n.help\n  color: white\n  height: 100%\n  background-color: rgba(0, 0, 0, 0.875)\n  padding: 1em\n  position: absolute\n  top: 100%\n  width: 100%\n  z-index: 9000\n\n  transition-duration: 0.3s\n\n  &.up\n    top: 0\n\n  .key\n    display: inline-block\n    font-weight: bold\n    padding-right: 20px\n    text-align: right\n    vertical-align: top\n    width: 160px\n\n  .command\n    display: inline-block\n",
+      "mode": "100644",
+      "type": "blob"
     },
-    "hotkey_actions.coffee.md": {
-      "path": "hotkey_actions.coffee.md",
-      "content": "Hotkey Actions\n==============\n\n    require \"jquery-hotkeys\"\n\n    Item = require \"./item\"\n    Point = require \"point\"\n\n    module.exports = Actions = (state) ->\n      Object.keys(bindings).forEach (hotkey) ->\n        $(document).on \"keydown\", null, hotkey, (event) ->\n          event.preventDefault()\n\n          actions[bindings[hotkey]](state())\n\n    Actions.hotkeys = ->\n      objectToArray(bindings)\n\n    bindings =\n      f1: \"displayHelp\"\n      pageup: \"raiseToTop\"\n      del: \"delete\"\n      return: \"duplicate\"\n      \"ctrl+s\": \"save\"\n\n    actions =\n      displayHelp: ->\n        $(\".help\").toggleClass(\"up\")\n      raiseToTop: ({item, view, items}) ->\n        items.push items.remove item\n      delete: ({item, view, items}) ->\n        items.remove item\n      duplicate: ({item, view, items}) ->\n        newItem = Item item.copy()\n        newItem.position newItem.position().add(Point(20, 20))\n        items.push newItem\n\nSaves to address bar for now.\n\n      save: () ->\n        data = appData()\n        console.log data, data.length\n        location.hash = data\n\nHelpers\n-------\n\n    objectToArray = (object) ->\n      Object.keys(object).map (key) ->\n        [key, object[key]]\n",
-      "mode": "100644"
-    },
-    "templates/view.haml": {
-      "path": "templates/view.haml",
-      "content": ".items\n  - each @items, (item) ->\n    %img(src=item.src style=item.css)\n",
-      "mode": "100644"
-    },
-    "lib/size.coffee.md": {
-      "path": "lib/size.coffee.md",
-      "content": "Size\n====\n\nA simple 2d extent.\n\n    Size = (width, height) ->\n      if typeof width is \"object\"\n        {width, height} = width\n\n      width: width\n      height: height\n      __proto__: Size.prototype\n\n    Size.prototype =\n      scale: (scalar) ->\n        Size(@width * scalar, @height * scalar)\n    \n      toString: ->\n        \"Size(#{@width}, #{@height})\"\n    \n      max: (otherSize) ->\n        Size(\n          Math.max(@width, otherSize.width)\n          Math.max(@height, otherSize.height)\n        )\n    \n      each: (iterator) ->\n        [0...@height].forEach (y) ->\n          [0...@width].forEach (x) ->\n            iterator(x, y)\n\n    module.exports = Size\n",
-      "mode": "100644"
+    "templates/editor.haml": {
+      "path": "templates/editor.haml",
+      "content": "= require(\"./view\")(this)\n= require(\"./help\")(require \"../hotkey_actions\")\n",
+      "mode": "100644",
+      "type": "blob"
     },
     "templates/help.haml": {
       "path": "templates/help.haml",
       "content": ".help\n  %h2 Mouse Commands\n  .row\n    .key Click\n    .command Move Object\n  .row\n    .key Shift + Click\n    .command Scale Object\n  .row\n    .key Ctrl + Click\n    .command Rotate Object\n\n  %h2 Keyboard Commands\n  - each @hotkeys(), ([key, command]) ->\n    .row\n      .key= key\n      .command= command\n",
-      "mode": "100644"
+      "mode": "100644",
+      "type": "blob"
     },
-    "state_loader.coffee.md": {
-      "path": "state_loader.coffee.md",
-      "content": "State Loader\n============\n\n    Item = require \"./item\"\n\nFirst we get our state passed in from the ENV otherwise we use the location hash.\n\n    global.ENV ?= {}\n\n    ENV.APP_STATE ?= location.hash.substring(1)\n\n    if data = ENV.APP_STATE\n      items JSON.parse(data).map Item\n    else\n      \n\nOtherwise we get one from S3\n\n      S3Load = require \"./s3load\"\n      S3Load(\"http://addressable.s3.amazonaws.com/?prefix=uploads\")\n      .then (data) ->\n        data.map (datum) ->\n          \"http://addressable.s3.amazonaws.com/#{datum}\"\n        .map (src) ->\n          items.push Item\n            src: src\n  \n        console.log appData()\n",
-      "mode": "100644"
+    "templates/view.haml": {
+      "path": "templates/view.haml",
+      "content": ".items\n  - each @items, (item) ->\n    %img(src=item.src style=item.css)\n",
+      "mode": "100644",
+      "type": "blob"
     }
   },
   "distribution": {
-    "main": {
-      "path": "main",
-      "content": "(function() {\n  var Dragzone, Item, Observable, applyStylesheet, drop, handler, helpTemplate, paste, template;\n\n  window.focus();\n\n  require(\"./duct_tape\");\n\n  Observable = require(\"observable\");\n\n  applyStylesheet = require(\"util\").applyStylesheet;\n\n  drop = require(\"./lib/drop\");\n\n  paste = require(\"./lib/paste\");\n\n  applyStylesheet(require(\"./style\"));\n\n  global.items = Observable([]);\n\n  require(\"./state_loader\");\n\n  Dragzone = require(\"./lib/dragzone\");\n\n  Dragzone($(\"body\"), items);\n\n  template = require(\"./templates/view\");\n\n  document.body.appendChild(template({\n    items: items\n  }));\n\n  helpTemplate = require(\"./templates/help\");\n\n  document.body.appendChild(helpTemplate(require(\"./hotkey_actions\")));\n\n  Item = require(\"./item\");\n\n  handler = function(file) {\n    return addImage(URL.createObjectURL(file));\n  };\n\n  drop(document.querySelector(\"html\"), handler);\n\n  paste(document, {\n    callback: handler\n  });\n\n  global.appData = function() {\n    return JSON.stringify(items().map(function(item) {\n      return item.toJSON();\n    }));\n  };\n\n}).call(this);\n",
+    "command": {
+      "path": "command",
+      "content": "(function() {\n  var Command;\n\n  Command = require(\"./lib/command\");\n\n  module.exports = function(I, self) {\n    var C;\n    if (I == null) {\n      I = {};\n    }\n    self.include(Command);\n    C = self.Command.register;\n    C(\"Transform\", function(data) {\n      if (data.previous == null) {\n        data.previous = self.items.get(data.index).transform();\n      }\n      return {\n        execute: function() {\n          return self.items.get(data.index).transform(data.transform);\n        },\n        undo: function() {\n          return self.items.get(data.index).transform(data.previous);\n        },\n        set: function(transform) {\n          data.transform = transform;\n          return this.execute();\n        }\n      };\n    });\n    return C(\"Composite\", function(data) {\n      var commands;\n      if (data.commands) {\n        data.commands = data.commands.map(self.Command.parse);\n      } else {\n        data.commands = [];\n      }\n      commands = data.commands;\n      return {\n        execute: function() {\n          return commands.invoke(\"execute\");\n        },\n        undo: function() {\n          return commands.copy().reverse().invoke(\"undo\");\n        },\n        push: function(command, noExecute) {\n          commands.push(command);\n          if (!noExecute) {\n            return command.execute();\n          }\n        },\n        toJSON: function() {\n          return extend({}, data, {\n            commands: commands.invoke(\"toJSON\")\n          });\n        }\n      };\n    });\n  };\n\n}).call(this);\n",
       "type": "blob"
     },
-    "style": {
-      "path": "style",
-      "content": "module.exports = \"html {\\n  height: 100%;\\n}\\n\\nbody {\\n  font-family: \\\"HelveticaNeue-Light\\\", \\\"Helvetica Neue Light\\\", \\\"Helvetica Neue\\\", Helvetica, Arial, \\\"Lucida Grande\\\", sans-serif;\\n  height: 100%;\\n  margin: 0;\\n  overflow: hidden;\\n  position: relative;\\n}\\n\\n.items {\\n  height: 100%;\\n}\\n\\nimg {\\n  position: absolute;\\n}\\n\\n.point {\\n  position: absolute;\\n  width: 5px;\\n  height: 5px;\\n  background-color: red;\\n  z-index: 9000;\\n  display: none;\\n}\\n\\n.help {\\n  color: white;\\n  height: 100%;\\n  background-color: rgba(0, 0, 0, 0.875);\\n  padding: 1em;\\n  position: absolute;\\n  top: 100%;\\n  width: 100%;\\n  z-index: 9000;\\n  -ms-transition-duration: 0.3s;\\n  -moz-transition-duration: 0.3s;\\n  -webkit-transition-duration: 0.3s;\\n  transition-duration: 0.3s;\\n}\\n\\n.help.up {\\n  top: 0;\\n}\\n\\n.help .key {\\n  display: inline-block;\\n  font-weight: bold;\\n  padding-right: 20px;\\n  text-align: right;\\n  vertical-align: top;\\n  width: 160px;\\n}\\n\\n.help .command {\\n  display: inline-block;\\n}\";",
+    "duct_tape": {
+      "path": "duct_tape",
+      "content": "(function() {\n  var Matrix, Point, Size, prefix, sqrt;\n\n  global.Observable = require(\"observable\");\n\n  Point = require(\"point\");\n\n  Size = require(\"./lib/size\");\n\n  Matrix = require(\"matrix\");\n\n  sqrt = Math.sqrt;\n\n  Matrix.Point = Point;\n\n  Point.prototype.scale = function(width, height) {\n    var _ref;\n    if (typeof width === \"object\") {\n      _ref = width, width = _ref.width, height = _ref.height;\n    }\n    if (height == null) {\n      height = width;\n    }\n    return Point(this.x * width, this.y * height);\n  };\n\n  Point.prototype.abs = function() {\n    return Point(Math.abs(this.x), Math.abs(this.y));\n  };\n\n  Matrix.prototype.scaleComponent = function() {\n    return Size(sqrt(this.a * this.a + this.b * this.b), sqrt(this.c * this.c + this.d * this.d));\n  };\n\n  Matrix.prototype.translationComponent = function() {\n    return Point(this.tx, this.ty);\n  };\n\n  if (navigator.userAgent.match(/WebKit/)) {\n    prefix = \"-webkit-\";\n  } else {\n    prefix = \"\";\n  }\n\n  Matrix.prototype.css = function() {\n    return \"\" + prefix + \"transform: matrix(\" + this.a + \", \" + this.b + \", \" + this.c + \", \" + this.d + \", \" + this.tx + \", \" + this.ty + \");\";\n  };\n\n  Matrix.translation = Matrix.translate = function(x, y) {\n    var _ref;\n    if (typeof x === \"object\") {\n      _ref = x, x = _ref.x, y = _ref.y;\n    }\n    return Matrix(1, 0, 0, 1, x, y);\n  };\n\n}).call(this);\n",
       "type": "blob"
     },
-    "pixie": {
-      "path": "pixie",
-      "content": "module.exports = {\"version\":\"0.1.0\",\"remoteDependencies\":[\"https://code.jquery.com/jquery-1.11.0.min.js\"],\"dependencies\":{\"composition\":\"distri/compositions:v0.1.1\",\"jquery-hotkeys\":\"distri/jquery-hotkeys:v0.9.2\",\"observable\":\"distri/observable:v0.1.1\",\"point\":\"distri/point:v0.2.0\",\"util\":\"distri/util:v0.1.0\"}};",
+    "editor": {
+      "path": "editor",
+      "content": "(function() {\n  var Command, Composition, Item, Undo;\n\n  Item = require(\"./item\");\n\n  Composition = require(\"composition\");\n\n  Command = require(\"./command\");\n\n  Undo = require(\"undo\");\n\n  module.exports = function(I) {\n    var self;\n    if (I == null) {\n      I = {};\n    }\n    self = Composition(I);\n    self.include(Command, Undo);\n    self.extend({\n      items: Observable([]),\n      load: function(data) {\n        return self.items(data.map(Item));\n      }\n    });\n    return self;\n  };\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "hotkey_actions": {
+      "path": "hotkey_actions",
+      "content": "(function() {\n  var Actions, Item, Point, actions, bindings, objectToArray;\n\n  require(\"jquery-hotkeys\");\n\n  Item = require(\"./item\");\n\n  Point = require(\"point\");\n\n  module.exports = Actions = function(state) {\n    return Object.keys(bindings).forEach(function(hotkey) {\n      return $(document).on(\"keydown\", null, hotkey, function(event) {\n        event.preventDefault();\n        return actions[bindings[hotkey]](state());\n      });\n    });\n  };\n\n  Actions.hotkeys = function() {\n    return objectToArray(bindings);\n  };\n\n  bindings = {\n    f1: \"displayHelp\",\n    pageup: \"raiseToTop\",\n    del: \"delete\",\n    \"return\": \"duplicate\",\n    \"ctrl+s\": \"save\",\n    \"ctrl+z\": \"undo\",\n    \"ctrl+y\": \"redo\"\n  };\n\n  actions = {\n    displayHelp: function() {\n      return $(\".help\").toggleClass(\"up\");\n    },\n    raiseToTop: function(_arg) {\n      var item, items, view;\n      item = _arg.item, view = _arg.view, items = _arg.items;\n      return items.push(items.remove(item));\n    },\n    \"delete\": function(_arg) {\n      var item, items, view;\n      item = _arg.item, view = _arg.view, items = _arg.items;\n      return items.remove(item);\n    },\n    duplicate: function(_arg) {\n      var item, items, newItem, view;\n      item = _arg.item, view = _arg.view, items = _arg.items;\n      newItem = Item(item.copy());\n      newItem.position(newItem.position().add(Point(20, 20)));\n      return items.push(newItem);\n    },\n    undo: function(_arg) {\n      var editor;\n      editor = _arg.editor;\n      return editor.undo();\n    },\n    redo: function(_arg) {\n      var editor;\n      editor = _arg.editor;\n      return editor.redo();\n    },\n    save: function() {\n      var data;\n      data = appData();\n      console.log(data, data.length);\n      return location.hash = data;\n    }\n  };\n\n  objectToArray = function(object) {\n    return Object.keys(object).map(function(key) {\n      return [key, object[key]];\n    });\n  };\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "item": {
+      "path": "item",
+      "content": "(function() {\n  var Composition, Matrix, Observable, Point, Size, defaults, extend, _ref;\n\n  Composition = require(\"composition\");\n\n  Observable = require(\"observable\");\n\n  Point = require(\"point\");\n\n  Matrix = require(\"matrix\");\n\n  Size = require(\"./lib/size\");\n\n  _ref = require(\"util\"), extend = _ref.extend, defaults = _ref.defaults;\n\n  module.exports = function(I) {\n    var autosize, self;\n    if (I == null) {\n      I = {};\n    }\n    defaults(I, {\n      transform: Matrix(),\n      size: Size(1, 1)\n    });\n    self = Composition(I).extend({\n      position: function() {\n        return self.transform().translationComponent();\n      },\n      copy: function() {\n        return extend({}, I);\n      },\n      anchor: function() {\n        return Point(1, 1).scale(self.size().scale(0.5));\n      },\n      center: function() {\n        return self.anchor().add(self.position());\n      }\n    });\n    self.attrObservable(\"transform\", \"src\", \"size\");\n    autosize = function(src) {\n      var img;\n      img = document.createElement(\"img\");\n      img.onload = function() {\n        return self.size(Size(this.width, this.height));\n      };\n      return img.src = src;\n    };\n    autosize(self.src());\n    self.css = Observable(function() {\n      return self.transform().css();\n    });\n    return self;\n  };\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "lib/command": {
+      "path": "lib/command",
+      "content": "(function() {\n  var extend;\n\n  extend = require(\"util\").extend;\n\n  module.exports = function(I, self) {\n    if (I == null) {\n      I = {};\n    }\n    self.Command = {\n      register: function(name, constructor) {\n        return self.Command[name] = function(data) {\n          var command;\n          if (data == null) {\n            data = {};\n          }\n          data = extend({}, data);\n          data.name = name;\n          command = constructor(data);\n          if (command.toJSON == null) {\n            command.toJSON = function() {\n              return data;\n            };\n          }\n          return command;\n        };\n      },\n      parse: function(commandData) {\n        return self.Command[commandData.name](commandData);\n      }\n    };\n    return self;\n  };\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "lib/dragzone": {
+      "path": "lib/dragzone",
+      "content": "(function() {\n  var Actions, Matrix, Point, debugPoint, localPosition;\n\n  Matrix = require(\"matrix\");\n\n  Point = require(\"point\");\n\n  debugPoint = document.createElement(\"div\");\n\n  debugPoint.className = \"point\";\n\n  document.body.appendChild(debugPoint);\n\n  Actions = require(\"../hotkey_actions\");\n\n  module.exports = function($element, editor) {\n    var active, activeItem, activeView, anchor, center, initialTransform, lastCommand, rotating, scaling, startPosition;\n    active = false;\n    activeItem = null;\n    activeView = null;\n    anchor = null;\n    startPosition = null;\n    initialTransform = null;\n    lastCommand = null;\n    center = null;\n    scaling = null;\n    rotating = null;\n    Actions(function() {\n      return {\n        items: editor.items,\n        item: activeItem,\n        view: activeView,\n        editor: editor\n      };\n    });\n    return $element.bind({\n      \"touchstart mousedown\": function(event) {\n        var $target, index, target;\n        $target = $(target = event.target);\n        if ($target.is(\"img\")) {\n          event.preventDefault();\n          active = true;\n          activeView = target;\n          index = $(\".items img\").index(target);\n          activeItem = editor.items.get(index);\n          initialTransform = activeItem.transform();\n          center = activeItem.center();\n          anchor = activeItem.anchor();\n          lastCommand = editor.Command.Transform({\n            index: index,\n            transform: initialTransform,\n            previous: initialTransform\n          });\n          editor.execute(lastCommand);\n          $(debugPoint).css({\n            top: center.y,\n            left: center.x\n          });\n          scaling = false;\n          rotating = false;\n          if (event.shiftKey) {\n            scaling = true;\n          } else if (event.ctrlKey || event.metaKey) {\n            rotating = true;\n          }\n          startPosition = localPosition(event);\n        }\n      },\n      \"touchmove mousemove\": function(event) {\n        var currentVec, deltaTransform, initialVec, p, vec;\n        if (!active) {\n          return;\n        }\n        p = localPosition(event);\n        if (scaling) {\n          initialVec = startPosition.subtract(center);\n          currentVec = p.subtract(center);\n          deltaTransform = Matrix.scale(currentVec.x / initialVec.x, currentVec.y / initialVec.y, initialTransform.translationComponent());\n        } else if (rotating) {\n          vec = p.subtract(center);\n          initialVec = startPosition.subtract(center);\n          deltaTransform = Matrix.rotation(Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x), initialTransform.translationComponent());\n        } else {\n          deltaTransform = Matrix.translation(p.subtract(startPosition));\n        }\n        if (deltaTransform) {\n          return lastCommand.set(deltaTransform.concat(initialTransform));\n        }\n      },\n      \"touchend mouseup\": function(event) {\n        active = false;\n      }\n    });\n  };\n\n  localPosition = function(event) {\n    return Point(event.pageX, event.pageY);\n  };\n\n}).call(this);\n",
       "type": "blob"
     },
     "lib/drop": {
@@ -275,9 +339,19 @@
       "content": "(function() {\n  module.exports = function(element, _arg) {\n    var callback, matchType, _ref;\n    _ref = _arg != null ? _arg : {}, matchType = _ref.matchType, callback = _ref.callback;\n    if (matchType == null) {\n      matchType = /image.*/;\n    }\n    return element.addEventListener('paste', function(_arg1) {\n      var clipboardData, found;\n      clipboardData = _arg1.clipboardData;\n      found = false;\n      return Array.prototype.forEach.call(clipboardData.types, function(type, i) {\n        var file;\n        if (found) {\n          return;\n        }\n        if (type.match(matchType) || (clipboardData.items && clipboardData.items[i].type.match(matchType))) {\n          file = clipboardData.items[i].getAsFile();\n          callback(file);\n          return found = true;\n        }\n      });\n    });\n  };\n\n}).call(this);\n",
       "type": "blob"
     },
-    "lib/dragzone": {
-      "path": "lib/dragzone",
-      "content": "(function() {\n  var Actions, Point, debugPoint, localPosition;\n\n  Point = require(\"point\");\n\n  debugPoint = document.createElement(\"div\");\n\n  debugPoint.className = \"point\";\n\n  document.body.appendChild(debugPoint);\n\n  Actions = require(\"../hotkey_actions\");\n\n  module.exports = function($element, items) {\n    var active, activeItem, activeView, center, initialRotation, initialScale, offset, startPosition;\n    active = false;\n    activeItem = null;\n    activeView = null;\n    offset = null;\n    startPosition = null;\n    initialRotation = null;\n    initialScale = null;\n    center = null;\n    Actions(function() {\n      return {\n        items: items,\n        item: activeItem,\n        view: activeView\n      };\n    });\n    return $element.bind({\n      \"touchstart mousedown\": function(event) {\n        var $target, itemStart, target;\n        $target = $(target = event.target);\n        if ($target.is(\"img\")) {\n          event.preventDefault();\n          active = true;\n          activeView = target;\n          activeItem = items.get($(\".items img\").index(target));\n          center = activeItem.center();\n          $(debugPoint).css({\n            top: center.y,\n            left: center.x\n          });\n          initialScale = null;\n          initialRotation = null;\n          if (event.shiftKey) {\n            initialScale = activeItem.scale();\n          } else if (event.ctrlKey || event.metaKey) {\n            initialRotation = activeItem.rotation();\n          }\n          startPosition = localPosition(event);\n          itemStart = activeItem.position();\n          offset = itemStart.subtract(startPosition);\n        }\n      },\n      \"touchmove mousemove\": function(event) {\n        var currentVec, deltaRotation, deltaScale, initialVec, p, vec;\n        if (!active) {\n          return;\n        }\n        p = localPosition(event);\n        if (initialScale) {\n          initialVec = startPosition.subtract(center);\n          currentVec = p.subtract(center);\n          deltaScale = Point(currentVec.x / initialVec.x, currentVec.y / initialVec.y);\n          return activeItem.scale(Point(deltaScale.x * initialScale.x, deltaScale.y * initialScale.y));\n        } else if (initialRotation != null) {\n          vec = p.subtract(center);\n          initialVec = startPosition.subtract(center);\n          deltaRotation = Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x);\n          return activeItem.rotation(initialRotation + deltaRotation);\n        } else {\n          return activeItem.position(p.add(offset));\n        }\n      },\n      \"touchend mouseup\": function(event) {\n        active = false;\n      }\n    });\n  };\n\n  localPosition = function(event) {\n    return Point(event.pageX, event.pageY);\n  };\n\n}).call(this);\n",
+    "lib/size": {
+      "path": "lib/size",
+      "content": "(function() {\n  var Size;\n\n  Size = function(width, height) {\n    var _ref;\n    if (typeof width === \"object\") {\n      _ref = width, width = _ref.width, height = _ref.height;\n    }\n    return {\n      width: width,\n      height: height,\n      __proto__: Size.prototype\n    };\n  };\n\n  Size.prototype = {\n    scale: function(scalar) {\n      return Size(this.width * scalar, this.height * scalar);\n    },\n    toString: function() {\n      return \"Size(\" + this.width + \", \" + this.height + \")\";\n    },\n    max: function(otherSize) {\n      return Size(Math.max(this.width, otherSize.width), Math.max(this.height, otherSize.height));\n    },\n    each: function(iterator) {\n      var _i, _ref, _results;\n      return (function() {\n        _results = [];\n        for (var _i = 0, _ref = this.height; 0 <= _ref ? _i < _ref : _i > _ref; 0 <= _ref ? _i++ : _i--){ _results.push(_i); }\n        return _results;\n      }).apply(this).forEach(function(y) {\n        var _i, _ref, _results;\n        return (function() {\n          _results = [];\n          for (var _i = 0, _ref = this.width; 0 <= _ref ? _i < _ref : _i > _ref; 0 <= _ref ? _i++ : _i--){ _results.push(_i); }\n          return _results;\n        }).apply(this).forEach(function(x) {\n          return iterator(x, y);\n        });\n      });\n    }\n  };\n\n  module.exports = Size;\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "main": {
+      "path": "main",
+      "content": "(function() {\n  var Dragzone, Item, Observable, applyStylesheet, drop, handler, paste, template;\n\n  window.focus();\n\n  require(\"./duct_tape\");\n\n  Observable = require(\"observable\");\n\n  applyStylesheet = require(\"util\").applyStylesheet;\n\n  drop = require(\"./lib/drop\");\n\n  paste = require(\"./lib/paste\");\n\n  applyStylesheet(require(\"./style\"));\n\n  global.editor = require(\"./editor\")();\n\n  require(\"./state_loader\")(editor);\n\n  Dragzone = require(\"./lib/dragzone\");\n\n  Dragzone($(\"body\"), editor);\n\n  template = require(\"./templates/editor\");\n\n  document.body.appendChild(template(editor));\n\n  Item = require(\"./item\");\n\n  handler = function(file) {\n    return addImage(URL.createObjectURL(file));\n  };\n\n  drop(document.querySelector(\"html\"), handler);\n\n  paste(document, {\n    callback: handler\n  });\n\n  global.appData = function() {\n    return JSON.stringify(editor.items().map(function(item) {\n      return item.toJSON();\n    }));\n  };\n\n}).call(this);\n",
+      "type": "blob"
+    },
+    "pixie": {
+      "path": "pixie",
+      "content": "module.exports = {\"version\":\"0.1.0\",\"remoteDependencies\":[\"https://code.jquery.com/jquery-1.11.0.min.js\"],\"dependencies\":{\"composition\":\"distri/compositions:v0.1.1\",\"jquery-hotkeys\":\"distri/jquery-hotkeys:v0.9.2\",\"matrix\":\"distri/matrix:v0.3.1\",\"observable\":\"distri/observable:v0.1.1\",\"point\":\"distri/point:v0.2.0\",\"undo\":\"distri/undo:v0.2.0\",\"util\":\"distri/util:v0.1.0\"}};",
       "type": "blob"
     },
     "s3load": {
@@ -285,29 +359,19 @@
       "content": "(function() {\n  module.exports = function(url) {\n    return $.get(url).then(function(data) {\n      return $(data).find(\"Key\").map(function() {\n        return this.innerHTML;\n      }).get();\n    });\n  };\n\n}).call(this);\n",
       "type": "blob"
     },
-    "item": {
-      "path": "item",
-      "content": "(function() {\n  var Composition, Observable, Point, Size, defaults, extend, _ref;\n\n  Composition = require(\"composition\");\n\n  Observable = require(\"observable\");\n\n  Point = require(\"point\");\n\n  Size = require(\"./lib/size\");\n\n  _ref = require(\"util\"), extend = _ref.extend, defaults = _ref.defaults;\n\n  module.exports = function(I) {\n    var autosize, prefix, scale, self, translation;\n    if (I == null) {\n      I = {};\n    }\n    defaults(I, {\n      position: Point(0, 0),\n      scale: Point(1, 1),\n      rotation: 0,\n      size: Size(0, 0)\n    });\n    self = Composition(I).extend({\n      copy: function() {\n        return extend({}, I);\n      },\n      center: function() {\n        var size;\n        size = Point(1, 1).scale(self.size()).scale(0.5);\n        return self.position().add(size);\n      }\n    });\n    self.attrObservable(\"position\", \"rotation\", \"scale\", \"size\", \"src\");\n    translation = function() {\n      var x, y, _ref1;\n      _ref1 = self.position(), x = _ref1.x, y = _ref1.y;\n      return \"translate(\" + x + \"px, \" + y + \"px)\";\n    };\n    scale = function() {\n      var x, y, _ref1;\n      _ref1 = self.scale(), x = _ref1.x, y = _ref1.y;\n      return \"scale(\" + x + \",\" + y + \")\";\n    };\n    if (navigator.userAgent.match(/WebKit/)) {\n      prefix = \"-webkit-\";\n    } else {\n      prefix = \"\";\n    }\n    autosize = function(src) {\n      var img;\n      img = document.createElement(\"img\");\n      img.onload = function() {\n        return self.size(Size(this.width, this.height));\n      };\n      return img.src = src;\n    };\n    autosize(self.src());\n    self.css = Observable(function() {\n      return \"\" + prefix + \"transform: \" + (translation()) + \" \" + (scale()) + \" rotate(\" + (self.rotation()) + \"rad);\";\n    });\n    return self;\n  };\n\n}).call(this);\n",
+    "state_loader": {
+      "path": "state_loader",
+      "content": "(function() {\n  module.exports = function(editor) {\n    var S3Load, data;\n    if (global.ENV == null) {\n      global.ENV = {};\n    }\n    if (ENV.APP_STATE == null) {\n      ENV.APP_STATE = location.hash.substring(1);\n    }\n    if (data = ENV.APP_STATE) {\n      return editor.load(JSON.parse(data));\n    } else {\n      S3Load = require(\"./s3load\");\n      return S3Load(\"http://addressable.s3.amazonaws.com/?prefix=uploads\").then(function(data) {\n        return data.map(function(datum) {\n          return \"http://addressable.s3.amazonaws.com/\" + datum;\n        }).map(function(src) {\n          return {\n            src: src\n          };\n        });\n      }).then(function(data) {\n        return editor.load(data);\n      });\n    }\n  };\n\n}).call(this);\n",
       "type": "blob"
     },
-    "duct_tape": {
-      "path": "duct_tape",
-      "content": "(function() {\n  var Point;\n\n  global.Observable = require(\"observable\");\n\n  Point = require(\"point\");\n\n  Point.prototype.scale = function(width, height) {\n    var _ref;\n    if (typeof width === \"object\") {\n      _ref = width, width = _ref.width, height = _ref.height;\n    }\n    if (height == null) {\n      height = width;\n    }\n    return Point(this.x * width, this.y * height);\n  };\n\n  Point.prototype.abs = function() {\n    return Point(Math.abs(this.x), Math.abs(this.y));\n  };\n\n}).call(this);\n",
+    "style": {
+      "path": "style",
+      "content": "module.exports = \"html {\\n  height: 100%;\\n}\\n\\nbody {\\n  font-family: \\\"HelveticaNeue-Light\\\", \\\"Helvetica Neue Light\\\", \\\"Helvetica Neue\\\", Helvetica, Arial, \\\"Lucida Grande\\\", sans-serif;\\n  height: 100%;\\n  margin: 0;\\n  overflow: hidden;\\n  position: relative;\\n}\\n\\n.items {\\n  height: 100%;\\n}\\n\\nimg {\\n  position: absolute;\\n}\\n\\n.point {\\n  position: absolute;\\n  width: 5px;\\n  height: 5px;\\n  background-color: red;\\n  z-index: 9000;\\n}\\n\\n.help {\\n  color: white;\\n  height: 100%;\\n  background-color: rgba(0, 0, 0, 0.875);\\n  padding: 1em;\\n  position: absolute;\\n  top: 100%;\\n  width: 100%;\\n  z-index: 9000;\\n  -ms-transition-duration: 0.3s;\\n  -moz-transition-duration: 0.3s;\\n  -webkit-transition-duration: 0.3s;\\n  transition-duration: 0.3s;\\n}\\n\\n.help.up {\\n  top: 0;\\n}\\n\\n.help .key {\\n  display: inline-block;\\n  font-weight: bold;\\n  padding-right: 20px;\\n  text-align: right;\\n  vertical-align: top;\\n  width: 160px;\\n}\\n\\n.help .command {\\n  display: inline-block;\\n}\";",
       "type": "blob"
     },
-    "hotkey_actions": {
-      "path": "hotkey_actions",
-      "content": "(function() {\n  var Actions, Item, Point, actions, bindings, objectToArray;\n\n  require(\"jquery-hotkeys\");\n\n  Item = require(\"./item\");\n\n  Point = require(\"point\");\n\n  module.exports = Actions = function(state) {\n    return Object.keys(bindings).forEach(function(hotkey) {\n      return $(document).on(\"keydown\", null, hotkey, function(event) {\n        event.preventDefault();\n        return actions[bindings[hotkey]](state());\n      });\n    });\n  };\n\n  Actions.hotkeys = function() {\n    return objectToArray(bindings);\n  };\n\n  bindings = {\n    f1: \"displayHelp\",\n    pageup: \"raiseToTop\",\n    del: \"delete\",\n    \"return\": \"duplicate\",\n    \"ctrl+s\": \"save\"\n  };\n\n  actions = {\n    displayHelp: function() {\n      return $(\".help\").toggleClass(\"up\");\n    },\n    raiseToTop: function(_arg) {\n      var item, items, view;\n      item = _arg.item, view = _arg.view, items = _arg.items;\n      return items.push(items.remove(item));\n    },\n    \"delete\": function(_arg) {\n      var item, items, view;\n      item = _arg.item, view = _arg.view, items = _arg.items;\n      return items.remove(item);\n    },\n    duplicate: function(_arg) {\n      var item, items, newItem, view;\n      item = _arg.item, view = _arg.view, items = _arg.items;\n      newItem = Item(item.copy());\n      newItem.position(newItem.position().add(Point(20, 20)));\n      return items.push(newItem);\n    },\n    save: function() {\n      var data;\n      data = appData();\n      console.log(data, data.length);\n      return location.hash = data;\n    }\n  };\n\n  objectToArray = function(object) {\n    return Object.keys(object).map(function(key) {\n      return [key, object[key]];\n    });\n  };\n\n}).call(this);\n",
-      "type": "blob"
-    },
-    "templates/view": {
-      "path": "templates/view",
-      "content": "Runtime = require(\"/_lib/hamljr_runtime\");\n\nmodule.exports = (function(data) {\n  return (function() {\n    var __runtime;\n    __runtime = Runtime(this);\n    __runtime.push(document.createDocumentFragment());\n    __runtime.push(document.createElement(\"div\"));\n    __runtime.classes(\"items\");\n    __runtime.each(this.items, function(item) {\n      __runtime.push(document.createElement(\"img\"));\n      __runtime.attribute(\"src\", item.src);\n      __runtime.attribute(\"style\", item.css);\n      return __runtime.pop();\n    });\n    __runtime.pop();\n    return __runtime.pop();\n  }).call(data);\n});\n",
-      "type": "blob"
-    },
-    "lib/size": {
-      "path": "lib/size",
-      "content": "(function() {\n  var Size;\n\n  Size = function(width, height) {\n    var _ref;\n    if (typeof width === \"object\") {\n      _ref = width, width = _ref.width, height = _ref.height;\n    }\n    return {\n      width: width,\n      height: height,\n      __proto__: Size.prototype\n    };\n  };\n\n  Size.prototype = {\n    scale: function(scalar) {\n      return Size(this.width * scalar, this.height * scalar);\n    },\n    toString: function() {\n      return \"Size(\" + this.width + \", \" + this.height + \")\";\n    },\n    max: function(otherSize) {\n      return Size(Math.max(this.width, otherSize.width), Math.max(this.height, otherSize.height));\n    },\n    each: function(iterator) {\n      var _i, _ref, _results;\n      return (function() {\n        _results = [];\n        for (var _i = 0, _ref = this.height; 0 <= _ref ? _i < _ref : _i > _ref; 0 <= _ref ? _i++ : _i--){ _results.push(_i); }\n        return _results;\n      }).apply(this).forEach(function(y) {\n        var _i, _ref, _results;\n        return (function() {\n          _results = [];\n          for (var _i = 0, _ref = this.width; 0 <= _ref ? _i < _ref : _i > _ref; 0 <= _ref ? _i++ : _i--){ _results.push(_i); }\n          return _results;\n        }).apply(this).forEach(function(x) {\n          return iterator(x, y);\n        });\n      });\n    }\n  };\n\n  module.exports = Size;\n\n}).call(this);\n",
+    "templates/editor": {
+      "path": "templates/editor",
+      "content": "Runtime = require(\"/_lib/hamljr_runtime\");\n\nmodule.exports = (function(data) {\n  return (function() {\n    var __runtime;\n    __runtime = Runtime(this);\n    __runtime.push(document.createDocumentFragment());\n    __runtime.text(require(\"./view\")(this));\n    __runtime.text(require(\"./help\")(require(\"../hotkey_actions\")));\n    return __runtime.pop();\n  }).call(data);\n});\n",
       "type": "blob"
     },
     "templates/help": {
@@ -315,9 +379,9 @@
       "content": "Runtime = require(\"/_lib/hamljr_runtime\");\n\nmodule.exports = (function(data) {\n  return (function() {\n    var __runtime;\n    __runtime = Runtime(this);\n    __runtime.push(document.createDocumentFragment());\n    __runtime.push(document.createElement(\"div\"));\n    __runtime.classes(\"help\");\n    __runtime.push(document.createElement(\"h2\"));\n    __runtime.text(\"Mouse Commands\\n\");\n    __runtime.pop();\n    __runtime.push(document.createElement(\"div\"));\n    __runtime.classes(\"row\");\n    __runtime.push(document.createElement(\"div\"));\n    __runtime.classes(\"key\");\n    __runtime.text(\"Click\\n\");\n    __runtime.pop();\n    __runtime.push(document.createElement(\"div\"));\n    __runtime.classes(\"command\");\n    __runtime.text(\"Move Object\\n\");\n    __runtime.pop();\n    __runtime.pop();\n    __runtime.push(document.createElement(\"div\"));\n    __runtime.classes(\"row\");\n    __runtime.push(document.createElement(\"div\"));\n    __runtime.classes(\"key\");\n    __runtime.text(\"Shift + Click\\n\");\n    __runtime.pop();\n    __runtime.push(document.createElement(\"div\"));\n    __runtime.classes(\"command\");\n    __runtime.text(\"Scale Object\\n\");\n    __runtime.pop();\n    __runtime.pop();\n    __runtime.push(document.createElement(\"div\"));\n    __runtime.classes(\"row\");\n    __runtime.push(document.createElement(\"div\"));\n    __runtime.classes(\"key\");\n    __runtime.text(\"Ctrl + Click\\n\");\n    __runtime.pop();\n    __runtime.push(document.createElement(\"div\"));\n    __runtime.classes(\"command\");\n    __runtime.text(\"Rotate Object\\n\");\n    __runtime.pop();\n    __runtime.pop();\n    __runtime.push(document.createElement(\"h2\"));\n    __runtime.text(\"Keyboard Commands\\n\");\n    __runtime.pop();\n    __runtime.each(this.hotkeys(), function(_arg) {\n      var command, key;\n      key = _arg[0], command = _arg[1];\n      __runtime.push(document.createElement(\"div\"));\n      __runtime.classes(\"row\");\n      __runtime.push(document.createElement(\"div\"));\n      __runtime.classes(\"key\");\n      __runtime.text(key);\n      __runtime.pop();\n      __runtime.push(document.createElement(\"div\"));\n      __runtime.classes(\"command\");\n      __runtime.text(command);\n      __runtime.pop();\n      return __runtime.pop();\n    });\n    __runtime.pop();\n    return __runtime.pop();\n  }).call(data);\n});\n",
       "type": "blob"
     },
-    "state_loader": {
-      "path": "state_loader",
-      "content": "(function() {\n  var Item, S3Load, data;\n\n  Item = require(\"./item\");\n\n  if (global.ENV == null) {\n    global.ENV = {};\n  }\n\n  if (ENV.APP_STATE == null) {\n    ENV.APP_STATE = location.hash.substring(1);\n  }\n\n  if (data = ENV.APP_STATE) {\n    items(JSON.parse(data).map(Item));\n  } else {\n    S3Load = require(\"./s3load\");\n    S3Load(\"http://addressable.s3.amazonaws.com/?prefix=uploads\").then(function(data) {\n      data.map(function(datum) {\n        return \"http://addressable.s3.amazonaws.com/\" + datum;\n      }).map(function(src) {\n        return items.push(Item({\n          src: src\n        }));\n      });\n      return console.log(appData());\n    });\n  }\n\n}).call(this);\n",
+    "templates/view": {
+      "path": "templates/view",
+      "content": "Runtime = require(\"/_lib/hamljr_runtime\");\n\nmodule.exports = (function(data) {\n  return (function() {\n    var __runtime;\n    __runtime = Runtime(this);\n    __runtime.push(document.createDocumentFragment());\n    __runtime.push(document.createElement(\"div\"));\n    __runtime.classes(\"items\");\n    __runtime.each(this.items, function(item) {\n      __runtime.push(document.createElement(\"img\"));\n      __runtime.attribute(\"src\", item.src);\n      __runtime.attribute(\"style\", item.css);\n      return __runtime.pop();\n    });\n    __runtime.pop();\n    return __runtime.pop();\n  }).call(data);\n});\n",
       "type": "blob"
     },
     "_lib/hamljr_runtime": {
@@ -1031,6 +1095,189 @@
       },
       "dependencies": {}
     },
+    "matrix": {
+      "source": {
+        "LICENSE": {
+          "path": "LICENSE",
+          "mode": "100644",
+          "content": "The MIT License (MIT)\n\nCopyright (c) 2013 Daniel X Moore\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of\nthis software and associated documentation files (the \"Software\"), to deal in\nthe Software without restriction, including without limitation the rights to\nuse, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of\nthe Software, and to permit persons to whom the Software is furnished to do so,\nsubject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS\nFOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR\nCOPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER\nIN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN\nCONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n",
+          "type": "blob"
+        },
+        "README.md": {
+          "path": "README.md",
+          "mode": "100644",
+          "content": "matrix\n======\n\nWhere matrices become heroes, together.\n",
+          "type": "blob"
+        },
+        "matrix.coffee.md": {
+          "path": "matrix.coffee.md",
+          "mode": "100644",
+          "content": "Matrix\n======\n\n```\n   _        _\n  | a  c tx  |\n  | b  d ty  |\n  |_0  0  1 _|\n```\n\nCreates a matrix for 2d affine transformations.\n\n`concat`, `inverse`, `rotate`, `scale` and `translate` return new matrices with\nthe transformations applied. The matrix is not modified in place.\n\nReturns the identity matrix when called with no arguments.\n\n    Matrix = (a, b, c, d, tx, ty) ->\n      if isObject(a)\n        {a, b, c, d, tx, ty} = a\n\n      __proto__: Matrix.prototype\n      a: a ? 1\n      b: b ? 0\n      c: c ? 0\n      d: d ? 1\n      tx: tx ? 0\n      ty: ty ? 0\n\nA `Point` constructor for the methods that return points. This can be overridden\nwith a compatible constructor if you want fancier points.\n\n    Matrix.Point = require \"./point\"\n\n    Matrix.prototype =\n\n`concat` returns the result of this matrix multiplied by another matrix\ncombining the geometric effects of the two. In mathematical terms,\nconcatenating two matrixes is the same as combining them using matrix multiplication.\nIf this matrix is A and the matrix passed in is B, the resulting matrix is A x B\nhttp://mathworld.wolfram.com/MatrixMultiplication.html\n\n      concat: (matrix) ->\n        Matrix(\n          @a * matrix.a + @c * matrix.b,\n          @b * matrix.a + @d * matrix.b,\n          @a * matrix.c + @c * matrix.d,\n          @b * matrix.c + @d * matrix.d,\n          @a * matrix.tx + @c * matrix.ty + @tx,\n          @b * matrix.tx + @d * matrix.ty + @ty\n        )\n\n\nReturn a new matrix that is a `copy` of this matrix.\n\n      copy: ->\n        Matrix(@a, @b, @c, @d, @tx, @ty)\n\nGiven a point in the pretransform coordinate space, returns the coordinates of\nthat point after the transformation occurs. Unlike the standard transformation\napplied using the transformPoint() method, the deltaTransformPoint() method\ndoes not consider the translation parameters tx and ty.\n\nReturns a new `Point` transformed by this matrix ignoring tx and ty.\n\n      deltaTransformPoint: (point) ->\n        Matrix.Point(\n          @a * point.x + @c * point.y,\n          @b * point.x + @d * point.y\n        )\n\nReturns a new matrix that is the inverse of this matrix.\nhttp://mathworld.wolfram.com/MatrixInverse.html\n\n      inverse: ->\n        determinant = @a * @d - @b * @c\n\n        Matrix(\n          @d / determinant,\n          -@b / determinant,\n          -@c / determinant,\n          @a / determinant,\n          (@c * @ty - @d * @tx) / determinant,\n          (@b * @tx - @a * @ty) / determinant\n        )\n\nReturns a new matrix that corresponds this matrix multiplied by a\na rotation matrix.\n\nThe first parameter `theta` is the amount to rotate in radians.\n\nThe second optional parameter, `aboutPoint` is the point about which the\nrotation occurs. Defaults to (0,0).\n\n      rotate: (theta, aboutPoint) ->\n        @concat(Matrix.rotation(theta, aboutPoint))\n\nReturns a new matrix that corresponds this matrix multiplied by a\na scaling matrix.\n\n      scale: (sx, sy, aboutPoint) ->\n        @concat(Matrix.scale(sx, sy, aboutPoint))\n\nReturns a new matrix that corresponds this matrix multiplied by a\na skewing matrix.\n\n      skew: (skewX, skewY) ->\n        @concat(Matrix.skew(skewX, skewY))\n\nReturns a string representation of this matrix.\n\n      toString: ->\n        \"Matrix(#{@a}, #{@b}, #{@c}, #{@d}, #{@tx}, #{@ty})\"\n\nReturns the result of applying the geometric transformation represented by the\nMatrix object to the specified point.\n\n      transformPoint: (point) ->\n        Matrix.Point(\n          @a * point.x + @c * point.y + @tx,\n          @b * point.x + @d * point.y + @ty\n        )\n\nTranslates the matrix along the x and y axes, as specified by the tx and ty parameters.\n\n      translate: (tx, ty) ->\n        @concat(Matrix.translation(tx, ty))\n\nCreates a matrix transformation that corresponds to the given rotation,\naround (0,0) or the specified point.\n\n    Matrix.rotate = Matrix.rotation = (theta, aboutPoint) ->\n      rotationMatrix = Matrix(\n        Math.cos(theta),\n        Math.sin(theta),\n        -Math.sin(theta),\n        Math.cos(theta)\n      )\n\n      if aboutPoint?\n        rotationMatrix =\n          Matrix.translation(aboutPoint.x, aboutPoint.y).concat(\n            rotationMatrix\n          ).concat(\n            Matrix.translation(-aboutPoint.x, -aboutPoint.y)\n          )\n\n      return rotationMatrix\n\nReturns a matrix that corresponds to scaling by factors of sx, sy along\nthe x and y axis respectively.\n\nIf only one parameter is given the matrix is scaled uniformly along both axis.\n\nIf the optional aboutPoint parameter is given the scaling takes place\nabout the given point.\n\n    Matrix.scale = (sx, sy, aboutPoint) ->\n      sy = sy || sx\n\n      scaleMatrix = Matrix(sx, 0, 0, sy)\n\n      if aboutPoint\n        scaleMatrix =\n          Matrix.translation(aboutPoint.x, aboutPoint.y).concat(\n            scaleMatrix\n          ).concat(\n            Matrix.translation(-aboutPoint.x, -aboutPoint.y)\n          )\n\n      return scaleMatrix\n\n\nReturns a matrix that corresponds to a skew of skewX, skewY.\n\n    Matrix.skew = (skewX, skewY) ->\n      Matrix(0, Math.tan(skewY), Math.tan(skewX), 0)\n\nReturns a matrix that corresponds to a translation of tx, ty.\n\n    Matrix.translate = Matrix.translation = (tx, ty) ->\n      Matrix(1, 0, 0, 1, tx, ty)\n\nHelpers\n-------\n\n    isObject = (object) ->\n      Object.prototype.toString.call(object) is \"[object Object]\"\n\n    frozen = (object) ->\n      Object.freeze?(object)\n\n      return object\n\nConstants\n---------\n\nA constant representing the identity matrix.\n\n    Matrix.IDENTITY = frozen Matrix()\n\nA constant representing the horizontal flip transformation matrix.\n\n    Matrix.HORIZONTAL_FLIP = frozen Matrix(-1, 0, 0, 1)\n\nA constant representing the vertical flip transformation matrix.\n\n    Matrix.VERTICAL_FLIP = frozen Matrix(1, 0, 0, -1)\n\nExports\n-------\n\n    module.exports = Matrix\n",
+          "type": "blob"
+        },
+        "pixie.cson": {
+          "path": "pixie.cson",
+          "mode": "100644",
+          "content": "version: \"0.3.1\"\nentryPoint: \"matrix\"\n",
+          "type": "blob"
+        },
+        "test/matrix.coffee": {
+          "path": "test/matrix.coffee",
+          "mode": "100644",
+          "content": "Matrix = require \"../matrix\"\nPoint = require \"../point\"\n\nok = assert\nequals = assert.equal\ntest = it\n\ndescribe \"Matrix\", ->\n\n  TOLERANCE = 0.00001\n  \n  equalEnough = (expected, actual, tolerance, message) ->\n    message ||= \"\" + expected + \" within \" + tolerance + \" of \" + actual\n    ok(expected + tolerance >= actual && expected - tolerance <= actual, message)\n  \n  matrixEqual = (m1, m2) ->\n    equalEnough(m1.a, m2.a, TOLERANCE)\n    equalEnough(m1.b, m2.b, TOLERANCE)\n    equalEnough(m1.c, m2.c, TOLERANCE)\n    equalEnough(m1.d, m2.d, TOLERANCE)\n    equalEnough(m1.tx, m2.tx, TOLERANCE)\n    equalEnough(m1.ty, m2.ty, TOLERANCE)\n  \n  test \"copy constructor\", ->\n   matrix = Matrix(1, 0, 0, 1, 10, 12)\n  \n   matrix2 = Matrix(matrix)\n  \n   ok matrix != matrix2\n   matrixEqual(matrix2, matrix)\n  \n  test \"Matrix() (Identity)\", ->\n    matrix = Matrix()\n  \n    equals(matrix.a, 1, \"a\")\n    equals(matrix.b, 0, \"b\")\n    equals(matrix.c, 0, \"c\")\n    equals(matrix.d, 1, \"d\")\n    equals(matrix.tx, 0, \"tx\")\n    equals(matrix.ty, 0, \"ty\")\n  \n    matrixEqual(matrix, Matrix.IDENTITY)\n  \n  test \"Empty\", ->\n    matrix = Matrix(0, 0, 0, 0, 0, 0)\n  \n    equals(matrix.a, 0, \"a\")\n    equals(matrix.b, 0, \"b\")\n    equals(matrix.c, 0, \"c\")\n    equals(matrix.d, 0, \"d\")\n    equals(matrix.tx, 0, \"tx\")\n    equals(matrix.ty, 0, \"ty\")\n  \n  test \"#copy\", ->\n    matrix = Matrix(2, 0, 0, 2)\n  \n    copyMatrix = matrix.copy()\n  \n    matrixEqual copyMatrix, matrix\n  \n    copyMatrix.a = 4\n  \n    equals copyMatrix.a, 4\n    equals matrix.a, 2, \"Old 'a' value is unchanged\"\n  \n  test \".scale\", ->\n    matrix = Matrix.scale(2, 2)\n  \n    equals(matrix.a, 2, \"a\")\n    equals(matrix.b, 0, \"b\")\n    equals(matrix.c, 0, \"c\")\n    equals(matrix.d, 2, \"d\")\n  \n    matrix = Matrix.scale(3)\n  \n    equals(matrix.a, 3, \"a\")\n    equals(matrix.b, 0, \"b\")\n    equals(matrix.c, 0, \"c\")\n    equals(matrix.d, 3, \"d\")\n  \n  test \".scale (about a point)\", ->\n    p = Point(5, 17)\n  \n    transformedPoint = Matrix.scale(3, 7, p).transformPoint(p)\n  \n    equals(transformedPoint.x, p.x, \"Point should remain the same\")\n    equals(transformedPoint.y, p.y, \"Point should remain the same\")\n  \n  test \"#scale (about a point)\", ->\n    p = Point(3, 11)\n  \n    transformedPoint = Matrix.IDENTITY.scale(3, 7, p).transformPoint(p)\n  \n    equals(transformedPoint.x, p.x, \"Point should remain the same\")\n    equals(transformedPoint.y, p.y, \"Point should remain the same\")\n  \n  test \"#skew\", ->\n    matrix = Matrix()\n\n    angle = 0.25 * Math.PI\n  \n    matrix = matrix.skew(angle, 0)\n  \n    equals matrix.c, Math.tan(angle)\n  \n  test \".rotation\", ->\n    matrix = Matrix.rotation(Math.PI / 2)\n  \n    equalEnough(matrix.a, 0, TOLERANCE)\n    equalEnough(matrix.b, 1, TOLERANCE)\n    equalEnough(matrix.c,-1, TOLERANCE)\n    equalEnough(matrix.d, 0, TOLERANCE)\n  \n  test \".rotation (about a point)\", ->\n    p = Point(11, 7)\n  \n    transformedPoint = Matrix.rotation(Math.PI / 2, p).transformPoint(p)\n  \n    equals transformedPoint.x, p.x, \"Point should remain the same\"\n    equals transformedPoint.y, p.y, \"Point should remain the same\"\n  \n  test \"#rotate (about a point)\", ->\n    p = Point(8, 5);\n  \n    transformedPoint = Matrix.IDENTITY.rotate(Math.PI / 2, p).transformPoint(p)\n  \n    equals transformedPoint.x, p.x, \"Point should remain the same\"\n    equals transformedPoint.y, p.y, \"Point should remain the same\"\n  \n  test \"#inverse (Identity)\", ->\n    matrix = Matrix().inverse()\n  \n    equals(matrix.a, 1, \"a\")\n    equals(matrix.b, 0, \"b\")\n    equals(matrix.c, 0, \"c\")\n    equals(matrix.d, 1, \"d\")\n    equals(matrix.tx, 0, \"tx\")\n    equals(matrix.ty, 0, \"ty\")\n  \n  test \"#concat\", ->\n    matrix = Matrix.rotation(Math.PI / 2).concat(Matrix.rotation(-Math.PI / 2))\n  \n    matrixEqual(matrix, Matrix.IDENTITY)\n  \n  test \"#toString\", ->\n    matrix = Matrix(0.5, 2, 0.5, -2, 3, 4.5)\n    matrixEqual eval(matrix.toString()), matrix\n  \n  test \"Maths\", ->\n    a = Matrix(12, 3, 3, 1, 7, 9)\n    b = Matrix(3, 8, 3, 2, 1, 5)\n  \n    c = a.concat(b)\n  \n    equals(c.a, 60)\n    equals(c.b, 17)\n    equals(c.c, 42)\n    equals(c.d, 11)\n    equals(c.tx, 34)\n    equals(c.ty, 17)\n  \n  test \"Order of transformations should match manual concat\", ->\n    tx = 10\n    ty = 5\n    theta = Math.PI/3\n    s = 2\n  \n    m1 = Matrix().translate(tx, ty).scale(s).rotate(theta)\n    m2 = Matrix().concat(Matrix.translation(tx, ty)).concat(Matrix.scale(s)).concat(Matrix.rotation(theta))\n  \n    matrixEqual(m1, m2)\n  \n  test \"IDENTITY is immutable\", ->\n    identity = Matrix.IDENTITY\n  \n    identity.a = 5\n  \n    equals identity.a, 1\n",
+          "type": "blob"
+        },
+        "point.coffee.md": {
+          "path": "point.coffee.md",
+          "mode": "100644",
+          "content": "Point\n=====\n\nA very simple Point object constructor.\n\n    module.exports = (x, y) ->\n      x: x\n      y: y\n",
+          "type": "blob"
+        }
+      },
+      "distribution": {
+        "matrix": {
+          "path": "matrix",
+          "content": "(function() {\n  var Matrix, frozen, isObject;\n\n  Matrix = function(a, b, c, d, tx, ty) {\n    var _ref;\n    if (isObject(a)) {\n      _ref = a, a = _ref.a, b = _ref.b, c = _ref.c, d = _ref.d, tx = _ref.tx, ty = _ref.ty;\n    }\n    return {\n      __proto__: Matrix.prototype,\n      a: a != null ? a : 1,\n      b: b != null ? b : 0,\n      c: c != null ? c : 0,\n      d: d != null ? d : 1,\n      tx: tx != null ? tx : 0,\n      ty: ty != null ? ty : 0\n    };\n  };\n\n  Matrix.Point = require(\"./point\");\n\n  Matrix.prototype = {\n    concat: function(matrix) {\n      return Matrix(this.a * matrix.a + this.c * matrix.b, this.b * matrix.a + this.d * matrix.b, this.a * matrix.c + this.c * matrix.d, this.b * matrix.c + this.d * matrix.d, this.a * matrix.tx + this.c * matrix.ty + this.tx, this.b * matrix.tx + this.d * matrix.ty + this.ty);\n    },\n    copy: function() {\n      return Matrix(this.a, this.b, this.c, this.d, this.tx, this.ty);\n    },\n    deltaTransformPoint: function(point) {\n      return Matrix.Point(this.a * point.x + this.c * point.y, this.b * point.x + this.d * point.y);\n    },\n    inverse: function() {\n      var determinant;\n      determinant = this.a * this.d - this.b * this.c;\n      return Matrix(this.d / determinant, -this.b / determinant, -this.c / determinant, this.a / determinant, (this.c * this.ty - this.d * this.tx) / determinant, (this.b * this.tx - this.a * this.ty) / determinant);\n    },\n    rotate: function(theta, aboutPoint) {\n      return this.concat(Matrix.rotation(theta, aboutPoint));\n    },\n    scale: function(sx, sy, aboutPoint) {\n      return this.concat(Matrix.scale(sx, sy, aboutPoint));\n    },\n    skew: function(skewX, skewY) {\n      return this.concat(Matrix.skew(skewX, skewY));\n    },\n    toString: function() {\n      return \"Matrix(\" + this.a + \", \" + this.b + \", \" + this.c + \", \" + this.d + \", \" + this.tx + \", \" + this.ty + \")\";\n    },\n    transformPoint: function(point) {\n      return Matrix.Point(this.a * point.x + this.c * point.y + this.tx, this.b * point.x + this.d * point.y + this.ty);\n    },\n    translate: function(tx, ty) {\n      return this.concat(Matrix.translation(tx, ty));\n    }\n  };\n\n  Matrix.rotate = Matrix.rotation = function(theta, aboutPoint) {\n    var rotationMatrix;\n    rotationMatrix = Matrix(Math.cos(theta), Math.sin(theta), -Math.sin(theta), Math.cos(theta));\n    if (aboutPoint != null) {\n      rotationMatrix = Matrix.translation(aboutPoint.x, aboutPoint.y).concat(rotationMatrix).concat(Matrix.translation(-aboutPoint.x, -aboutPoint.y));\n    }\n    return rotationMatrix;\n  };\n\n  Matrix.scale = function(sx, sy, aboutPoint) {\n    var scaleMatrix;\n    sy = sy || sx;\n    scaleMatrix = Matrix(sx, 0, 0, sy);\n    if (aboutPoint) {\n      scaleMatrix = Matrix.translation(aboutPoint.x, aboutPoint.y).concat(scaleMatrix).concat(Matrix.translation(-aboutPoint.x, -aboutPoint.y));\n    }\n    return scaleMatrix;\n  };\n\n  Matrix.skew = function(skewX, skewY) {\n    return Matrix(0, Math.tan(skewY), Math.tan(skewX), 0);\n  };\n\n  Matrix.translate = Matrix.translation = function(tx, ty) {\n    return Matrix(1, 0, 0, 1, tx, ty);\n  };\n\n  isObject = function(object) {\n    return Object.prototype.toString.call(object) === \"[object Object]\";\n  };\n\n  frozen = function(object) {\n    if (typeof Object.freeze === \"function\") {\n      Object.freeze(object);\n    }\n    return object;\n  };\n\n  Matrix.IDENTITY = frozen(Matrix());\n\n  Matrix.HORIZONTAL_FLIP = frozen(Matrix(-1, 0, 0, 1));\n\n  Matrix.VERTICAL_FLIP = frozen(Matrix(1, 0, 0, -1));\n\n  module.exports = Matrix;\n\n}).call(this);\n\n//# sourceURL=matrix.coffee",
+          "type": "blob"
+        },
+        "pixie": {
+          "path": "pixie",
+          "content": "module.exports = {\"version\":\"0.3.1\",\"entryPoint\":\"matrix\"};",
+          "type": "blob"
+        },
+        "test/matrix": {
+          "path": "test/matrix",
+          "content": "(function() {\n  var Matrix, Point, equals, ok, test;\n\n  Matrix = require(\"../matrix\");\n\n  Point = require(\"../point\");\n\n  ok = assert;\n\n  equals = assert.equal;\n\n  test = it;\n\n  describe(\"Matrix\", function() {\n    var TOLERANCE, equalEnough, matrixEqual;\n    TOLERANCE = 0.00001;\n    equalEnough = function(expected, actual, tolerance, message) {\n      message || (message = \"\" + expected + \" within \" + tolerance + \" of \" + actual);\n      return ok(expected + tolerance >= actual && expected - tolerance <= actual, message);\n    };\n    matrixEqual = function(m1, m2) {\n      equalEnough(m1.a, m2.a, TOLERANCE);\n      equalEnough(m1.b, m2.b, TOLERANCE);\n      equalEnough(m1.c, m2.c, TOLERANCE);\n      equalEnough(m1.d, m2.d, TOLERANCE);\n      equalEnough(m1.tx, m2.tx, TOLERANCE);\n      return equalEnough(m1.ty, m2.ty, TOLERANCE);\n    };\n    test(\"copy constructor\", function() {\n      var matrix, matrix2;\n      matrix = Matrix(1, 0, 0, 1, 10, 12);\n      matrix2 = Matrix(matrix);\n      ok(matrix !== matrix2);\n      return matrixEqual(matrix2, matrix);\n    });\n    test(\"Matrix() (Identity)\", function() {\n      var matrix;\n      matrix = Matrix();\n      equals(matrix.a, 1, \"a\");\n      equals(matrix.b, 0, \"b\");\n      equals(matrix.c, 0, \"c\");\n      equals(matrix.d, 1, \"d\");\n      equals(matrix.tx, 0, \"tx\");\n      equals(matrix.ty, 0, \"ty\");\n      return matrixEqual(matrix, Matrix.IDENTITY);\n    });\n    test(\"Empty\", function() {\n      var matrix;\n      matrix = Matrix(0, 0, 0, 0, 0, 0);\n      equals(matrix.a, 0, \"a\");\n      equals(matrix.b, 0, \"b\");\n      equals(matrix.c, 0, \"c\");\n      equals(matrix.d, 0, \"d\");\n      equals(matrix.tx, 0, \"tx\");\n      return equals(matrix.ty, 0, \"ty\");\n    });\n    test(\"#copy\", function() {\n      var copyMatrix, matrix;\n      matrix = Matrix(2, 0, 0, 2);\n      copyMatrix = matrix.copy();\n      matrixEqual(copyMatrix, matrix);\n      copyMatrix.a = 4;\n      equals(copyMatrix.a, 4);\n      return equals(matrix.a, 2, \"Old 'a' value is unchanged\");\n    });\n    test(\".scale\", function() {\n      var matrix;\n      matrix = Matrix.scale(2, 2);\n      equals(matrix.a, 2, \"a\");\n      equals(matrix.b, 0, \"b\");\n      equals(matrix.c, 0, \"c\");\n      equals(matrix.d, 2, \"d\");\n      matrix = Matrix.scale(3);\n      equals(matrix.a, 3, \"a\");\n      equals(matrix.b, 0, \"b\");\n      equals(matrix.c, 0, \"c\");\n      return equals(matrix.d, 3, \"d\");\n    });\n    test(\".scale (about a point)\", function() {\n      var p, transformedPoint;\n      p = Point(5, 17);\n      transformedPoint = Matrix.scale(3, 7, p).transformPoint(p);\n      equals(transformedPoint.x, p.x, \"Point should remain the same\");\n      return equals(transformedPoint.y, p.y, \"Point should remain the same\");\n    });\n    test(\"#scale (about a point)\", function() {\n      var p, transformedPoint;\n      p = Point(3, 11);\n      transformedPoint = Matrix.IDENTITY.scale(3, 7, p).transformPoint(p);\n      equals(transformedPoint.x, p.x, \"Point should remain the same\");\n      return equals(transformedPoint.y, p.y, \"Point should remain the same\");\n    });\n    test(\"#skew\", function() {\n      var angle, matrix;\n      matrix = Matrix();\n      angle = 0.25 * Math.PI;\n      matrix = matrix.skew(angle, 0);\n      return equals(matrix.c, Math.tan(angle));\n    });\n    test(\".rotation\", function() {\n      var matrix;\n      matrix = Matrix.rotation(Math.PI / 2);\n      equalEnough(matrix.a, 0, TOLERANCE);\n      equalEnough(matrix.b, 1, TOLERANCE);\n      equalEnough(matrix.c, -1, TOLERANCE);\n      return equalEnough(matrix.d, 0, TOLERANCE);\n    });\n    test(\".rotation (about a point)\", function() {\n      var p, transformedPoint;\n      p = Point(11, 7);\n      transformedPoint = Matrix.rotation(Math.PI / 2, p).transformPoint(p);\n      equals(transformedPoint.x, p.x, \"Point should remain the same\");\n      return equals(transformedPoint.y, p.y, \"Point should remain the same\");\n    });\n    test(\"#rotate (about a point)\", function() {\n      var p, transformedPoint;\n      p = Point(8, 5);\n      transformedPoint = Matrix.IDENTITY.rotate(Math.PI / 2, p).transformPoint(p);\n      equals(transformedPoint.x, p.x, \"Point should remain the same\");\n      return equals(transformedPoint.y, p.y, \"Point should remain the same\");\n    });\n    test(\"#inverse (Identity)\", function() {\n      var matrix;\n      matrix = Matrix().inverse();\n      equals(matrix.a, 1, \"a\");\n      equals(matrix.b, 0, \"b\");\n      equals(matrix.c, 0, \"c\");\n      equals(matrix.d, 1, \"d\");\n      equals(matrix.tx, 0, \"tx\");\n      return equals(matrix.ty, 0, \"ty\");\n    });\n    test(\"#concat\", function() {\n      var matrix;\n      matrix = Matrix.rotation(Math.PI / 2).concat(Matrix.rotation(-Math.PI / 2));\n      return matrixEqual(matrix, Matrix.IDENTITY);\n    });\n    test(\"#toString\", function() {\n      var matrix;\n      matrix = Matrix(0.5, 2, 0.5, -2, 3, 4.5);\n      return matrixEqual(eval(matrix.toString()), matrix);\n    });\n    test(\"Maths\", function() {\n      var a, b, c;\n      a = Matrix(12, 3, 3, 1, 7, 9);\n      b = Matrix(3, 8, 3, 2, 1, 5);\n      c = a.concat(b);\n      equals(c.a, 60);\n      equals(c.b, 17);\n      equals(c.c, 42);\n      equals(c.d, 11);\n      equals(c.tx, 34);\n      return equals(c.ty, 17);\n    });\n    test(\"Order of transformations should match manual concat\", function() {\n      var m1, m2, s, theta, tx, ty;\n      tx = 10;\n      ty = 5;\n      theta = Math.PI / 3;\n      s = 2;\n      m1 = Matrix().translate(tx, ty).scale(s).rotate(theta);\n      m2 = Matrix().concat(Matrix.translation(tx, ty)).concat(Matrix.scale(s)).concat(Matrix.rotation(theta));\n      return matrixEqual(m1, m2);\n    });\n    return test(\"IDENTITY is immutable\", function() {\n      var identity;\n      identity = Matrix.IDENTITY;\n      identity.a = 5;\n      return equals(identity.a, 1);\n    });\n  });\n\n}).call(this);\n\n//# sourceURL=test/matrix.coffee",
+          "type": "blob"
+        },
+        "point": {
+          "path": "point",
+          "content": "(function() {\n  module.exports = function(x, y) {\n    return {\n      x: x,\n      y: y\n    };\n  };\n\n}).call(this);\n\n//# sourceURL=point.coffee",
+          "type": "blob"
+        }
+      },
+      "progenitor": {
+        "url": "http://strd6.github.io/editor/"
+      },
+      "version": "0.3.1",
+      "entryPoint": "matrix",
+      "repository": {
+        "id": 13551996,
+        "name": "matrix",
+        "full_name": "distri/matrix",
+        "owner": {
+          "login": "distri",
+          "id": 6005125,
+          "avatar_url": "https://identicons.github.com/f90c81ffc1498e260c820082f2e7ca5f.png",
+          "gravatar_id": null,
+          "url": "https://api.github.com/users/distri",
+          "html_url": "https://github.com/distri",
+          "followers_url": "https://api.github.com/users/distri/followers",
+          "following_url": "https://api.github.com/users/distri/following{/other_user}",
+          "gists_url": "https://api.github.com/users/distri/gists{/gist_id}",
+          "starred_url": "https://api.github.com/users/distri/starred{/owner}{/repo}",
+          "subscriptions_url": "https://api.github.com/users/distri/subscriptions",
+          "organizations_url": "https://api.github.com/users/distri/orgs",
+          "repos_url": "https://api.github.com/users/distri/repos",
+          "events_url": "https://api.github.com/users/distri/events{/privacy}",
+          "received_events_url": "https://api.github.com/users/distri/received_events",
+          "type": "Organization",
+          "site_admin": false
+        },
+        "private": false,
+        "html_url": "https://github.com/distri/matrix",
+        "description": "Where matrices become heroes, together.",
+        "fork": false,
+        "url": "https://api.github.com/repos/distri/matrix",
+        "forks_url": "https://api.github.com/repos/distri/matrix/forks",
+        "keys_url": "https://api.github.com/repos/distri/matrix/keys{/key_id}",
+        "collaborators_url": "https://api.github.com/repos/distri/matrix/collaborators{/collaborator}",
+        "teams_url": "https://api.github.com/repos/distri/matrix/teams",
+        "hooks_url": "https://api.github.com/repos/distri/matrix/hooks",
+        "issue_events_url": "https://api.github.com/repos/distri/matrix/issues/events{/number}",
+        "events_url": "https://api.github.com/repos/distri/matrix/events",
+        "assignees_url": "https://api.github.com/repos/distri/matrix/assignees{/user}",
+        "branches_url": "https://api.github.com/repos/distri/matrix/branches{/branch}",
+        "tags_url": "https://api.github.com/repos/distri/matrix/tags",
+        "blobs_url": "https://api.github.com/repos/distri/matrix/git/blobs{/sha}",
+        "git_tags_url": "https://api.github.com/repos/distri/matrix/git/tags{/sha}",
+        "git_refs_url": "https://api.github.com/repos/distri/matrix/git/refs{/sha}",
+        "trees_url": "https://api.github.com/repos/distri/matrix/git/trees{/sha}",
+        "statuses_url": "https://api.github.com/repos/distri/matrix/statuses/{sha}",
+        "languages_url": "https://api.github.com/repos/distri/matrix/languages",
+        "stargazers_url": "https://api.github.com/repos/distri/matrix/stargazers",
+        "contributors_url": "https://api.github.com/repos/distri/matrix/contributors",
+        "subscribers_url": "https://api.github.com/repos/distri/matrix/subscribers",
+        "subscription_url": "https://api.github.com/repos/distri/matrix/subscription",
+        "commits_url": "https://api.github.com/repos/distri/matrix/commits{/sha}",
+        "git_commits_url": "https://api.github.com/repos/distri/matrix/git/commits{/sha}",
+        "comments_url": "https://api.github.com/repos/distri/matrix/comments{/number}",
+        "issue_comment_url": "https://api.github.com/repos/distri/matrix/issues/comments/{number}",
+        "contents_url": "https://api.github.com/repos/distri/matrix/contents/{+path}",
+        "compare_url": "https://api.github.com/repos/distri/matrix/compare/{base}...{head}",
+        "merges_url": "https://api.github.com/repos/distri/matrix/merges",
+        "archive_url": "https://api.github.com/repos/distri/matrix/{archive_format}{/ref}",
+        "downloads_url": "https://api.github.com/repos/distri/matrix/downloads",
+        "issues_url": "https://api.github.com/repos/distri/matrix/issues{/number}",
+        "pulls_url": "https://api.github.com/repos/distri/matrix/pulls{/number}",
+        "milestones_url": "https://api.github.com/repos/distri/matrix/milestones{/number}",
+        "notifications_url": "https://api.github.com/repos/distri/matrix/notifications{?since,all,participating}",
+        "labels_url": "https://api.github.com/repos/distri/matrix/labels{/name}",
+        "releases_url": "https://api.github.com/repos/distri/matrix/releases{/id}",
+        "created_at": "2013-10-14T03:46:16Z",
+        "updated_at": "2013-12-23T23:45:28Z",
+        "pushed_at": "2013-10-15T00:22:51Z",
+        "git_url": "git://github.com/distri/matrix.git",
+        "ssh_url": "git@github.com:distri/matrix.git",
+        "clone_url": "https://github.com/distri/matrix.git",
+        "svn_url": "https://github.com/distri/matrix",
+        "homepage": null,
+        "size": 580,
+        "stargazers_count": 0,
+        "watchers_count": 0,
+        "language": "CoffeeScript",
+        "has_issues": true,
+        "has_downloads": true,
+        "has_wiki": true,
+        "forks_count": 0,
+        "mirror_url": null,
+        "open_issues_count": 0,
+        "forks": 0,
+        "open_issues": 0,
+        "watchers": 0,
+        "default_branch": "master",
+        "master_branch": "master",
+        "permissions": {
+          "admin": true,
+          "push": true,
+          "pull": true
+        },
+        "organization": {
+          "login": "distri",
+          "id": 6005125,
+          "avatar_url": "https://identicons.github.com/f90c81ffc1498e260c820082f2e7ca5f.png",
+          "gravatar_id": null,
+          "url": "https://api.github.com/users/distri",
+          "html_url": "https://github.com/distri",
+          "followers_url": "https://api.github.com/users/distri/followers",
+          "following_url": "https://api.github.com/users/distri/following{/other_user}",
+          "gists_url": "https://api.github.com/users/distri/gists{/gist_id}",
+          "starred_url": "https://api.github.com/users/distri/starred{/owner}{/repo}",
+          "subscriptions_url": "https://api.github.com/users/distri/subscriptions",
+          "organizations_url": "https://api.github.com/users/distri/orgs",
+          "repos_url": "https://api.github.com/users/distri/repos",
+          "events_url": "https://api.github.com/users/distri/events{/privacy}",
+          "received_events_url": "https://api.github.com/users/distri/received_events",
+          "type": "Organization",
+          "site_admin": false
+        },
+        "network_count": 0,
+        "subscribers_count": 1,
+        "branch": "v0.3.1",
+        "defaultBranch": "master"
+      },
+      "dependencies": {}
+    },
     "observable": {
       "source": {
         "LICENSE": {
@@ -1385,6 +1632,353 @@
         "defaultBranch": "master"
       },
       "dependencies": {}
+    },
+    "undo": {
+      "source": {
+        "LICENSE": {
+          "path": "LICENSE",
+          "mode": "100644",
+          "content": "The MIT License (MIT)\n\nCopyright (c) 2013 distri\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of\nthis software and associated documentation files (the \"Software\"), to deal in\nthe Software without restriction, including without limitation the rights to\nuse, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of\nthe Software, and to permit persons to whom the Software is furnished to do so,\nsubject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS\nFOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR\nCOPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER\nIN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN\nCONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n",
+          "type": "blob"
+        },
+        "README.md": {
+          "path": "README.md",
+          "mode": "100644",
+          "content": "undo\n====\n\nUndo module for editors.\n",
+          "type": "blob"
+        },
+        "main.coffee.md": {
+          "path": "main.coffee.md",
+          "mode": "100644",
+          "content": "Undo\n====\n\nAn editor module for editors that support undo/redo\n\n    CommandStack = require \"command-stack\"\n\n    module.exports = (I={}, self=Core(I)) ->\n      commandStack = CommandStack()\n\n      self.extend\n        history: (newHistory=[]) ->\n          if arguments.length > 0\n            commandStack = CommandStack newHistory\n          else\n            commandStack.stack()\n\n        execute: (command) ->\n          commandStack.execute command\n\n          return self\n\n        undo: ->\n          commandStack.undo()\n\n          return self\n\n        redo: ->\n          commandStack.redo()\n\n          return self\n\n      return self\n",
+          "type": "blob"
+        },
+        "pixie.cson": {
+          "path": "pixie.cson",
+          "mode": "100644",
+          "content": "version: \"0.2.0\"\nremoteDependencies: [\n  \"http://strd6.github.io/tempest/javascripts/envweb-v0.4.7.js\"\n]\ndependencies:\n  \"command-stack\": \"distri/command-stack:v0.11.0\"\n",
+          "type": "blob"
+        },
+        "test/undo.coffee": {
+          "path": "test/undo.coffee",
+          "mode": "100644",
+          "content": "Undo = require \"../main\"\n\ndescribe \"undo\", ->\n  it \"should undo\", ->\n    undo = Undo()\n    \n    undo.execute\n      execute: ->\n        console.log \"execute\"\n      undo: ->\n        console.log \"undo\"\n    \n    undo.undo()\n",
+          "type": "blob"
+        }
+      },
+      "distribution": {
+        "main": {
+          "path": "main",
+          "content": "(function() {\n  var CommandStack;\n\n  CommandStack = require(\"command-stack\");\n\n  module.exports = function(I, self) {\n    var commandStack;\n    if (I == null) {\n      I = {};\n    }\n    if (self == null) {\n      self = Core(I);\n    }\n    commandStack = CommandStack();\n    self.extend({\n      history: function(newHistory) {\n        if (newHistory == null) {\n          newHistory = [];\n        }\n        if (arguments.length > 0) {\n          return commandStack = CommandStack(newHistory);\n        } else {\n          return commandStack.stack();\n        }\n      },\n      execute: function(command) {\n        commandStack.execute(command);\n        return self;\n      },\n      undo: function() {\n        commandStack.undo();\n        return self;\n      },\n      redo: function() {\n        commandStack.redo();\n        return self;\n      }\n    });\n    return self;\n  };\n\n}).call(this);\n\n//# sourceURL=main.coffee",
+          "type": "blob"
+        },
+        "pixie": {
+          "path": "pixie",
+          "content": "module.exports = {\"version\":\"0.2.0\",\"remoteDependencies\":[\"http://strd6.github.io/tempest/javascripts/envweb-v0.4.7.js\"],\"dependencies\":{\"command-stack\":\"distri/command-stack:v0.11.0\"}};",
+          "type": "blob"
+        },
+        "test/undo": {
+          "path": "test/undo",
+          "content": "(function() {\n  var Undo;\n\n  Undo = require(\"../main\");\n\n  describe(\"undo\", function() {\n    return it(\"should undo\", function() {\n      var undo;\n      undo = Undo();\n      undo.execute({\n        execute: function() {\n          return console.log(\"execute\");\n        },\n        undo: function() {\n          return console.log(\"undo\");\n        }\n      });\n      return undo.undo();\n    });\n  });\n\n}).call(this);\n\n//# sourceURL=test/undo.coffee",
+          "type": "blob"
+        }
+      },
+      "progenitor": {
+        "url": "http://strd6.github.io/editor/"
+      },
+      "version": "0.2.0",
+      "entryPoint": "main",
+      "remoteDependencies": [
+        "http://strd6.github.io/tempest/javascripts/envweb-v0.4.7.js"
+      ],
+      "repository": {
+        "id": 14673255,
+        "name": "undo",
+        "full_name": "distri/undo",
+        "owner": {
+          "login": "distri",
+          "id": 6005125,
+          "avatar_url": "https://identicons.github.com/f90c81ffc1498e260c820082f2e7ca5f.png",
+          "gravatar_id": null,
+          "url": "https://api.github.com/users/distri",
+          "html_url": "https://github.com/distri",
+          "followers_url": "https://api.github.com/users/distri/followers",
+          "following_url": "https://api.github.com/users/distri/following{/other_user}",
+          "gists_url": "https://api.github.com/users/distri/gists{/gist_id}",
+          "starred_url": "https://api.github.com/users/distri/starred{/owner}{/repo}",
+          "subscriptions_url": "https://api.github.com/users/distri/subscriptions",
+          "organizations_url": "https://api.github.com/users/distri/orgs",
+          "repos_url": "https://api.github.com/users/distri/repos",
+          "events_url": "https://api.github.com/users/distri/events{/privacy}",
+          "received_events_url": "https://api.github.com/users/distri/received_events",
+          "type": "Organization",
+          "site_admin": false
+        },
+        "private": false,
+        "html_url": "https://github.com/distri/undo",
+        "description": "Undo module for editors.",
+        "fork": false,
+        "url": "https://api.github.com/repos/distri/undo",
+        "forks_url": "https://api.github.com/repos/distri/undo/forks",
+        "keys_url": "https://api.github.com/repos/distri/undo/keys{/key_id}",
+        "collaborators_url": "https://api.github.com/repos/distri/undo/collaborators{/collaborator}",
+        "teams_url": "https://api.github.com/repos/distri/undo/teams",
+        "hooks_url": "https://api.github.com/repos/distri/undo/hooks",
+        "issue_events_url": "https://api.github.com/repos/distri/undo/issues/events{/number}",
+        "events_url": "https://api.github.com/repos/distri/undo/events",
+        "assignees_url": "https://api.github.com/repos/distri/undo/assignees{/user}",
+        "branches_url": "https://api.github.com/repos/distri/undo/branches{/branch}",
+        "tags_url": "https://api.github.com/repos/distri/undo/tags",
+        "blobs_url": "https://api.github.com/repos/distri/undo/git/blobs{/sha}",
+        "git_tags_url": "https://api.github.com/repos/distri/undo/git/tags{/sha}",
+        "git_refs_url": "https://api.github.com/repos/distri/undo/git/refs{/sha}",
+        "trees_url": "https://api.github.com/repos/distri/undo/git/trees{/sha}",
+        "statuses_url": "https://api.github.com/repos/distri/undo/statuses/{sha}",
+        "languages_url": "https://api.github.com/repos/distri/undo/languages",
+        "stargazers_url": "https://api.github.com/repos/distri/undo/stargazers",
+        "contributors_url": "https://api.github.com/repos/distri/undo/contributors",
+        "subscribers_url": "https://api.github.com/repos/distri/undo/subscribers",
+        "subscription_url": "https://api.github.com/repos/distri/undo/subscription",
+        "commits_url": "https://api.github.com/repos/distri/undo/commits{/sha}",
+        "git_commits_url": "https://api.github.com/repos/distri/undo/git/commits{/sha}",
+        "comments_url": "https://api.github.com/repos/distri/undo/comments{/number}",
+        "issue_comment_url": "https://api.github.com/repos/distri/undo/issues/comments/{number}",
+        "contents_url": "https://api.github.com/repos/distri/undo/contents/{+path}",
+        "compare_url": "https://api.github.com/repos/distri/undo/compare/{base}...{head}",
+        "merges_url": "https://api.github.com/repos/distri/undo/merges",
+        "archive_url": "https://api.github.com/repos/distri/undo/{archive_format}{/ref}",
+        "downloads_url": "https://api.github.com/repos/distri/undo/downloads",
+        "issues_url": "https://api.github.com/repos/distri/undo/issues{/number}",
+        "pulls_url": "https://api.github.com/repos/distri/undo/pulls{/number}",
+        "milestones_url": "https://api.github.com/repos/distri/undo/milestones{/number}",
+        "notifications_url": "https://api.github.com/repos/distri/undo/notifications{?since,all,participating}",
+        "labels_url": "https://api.github.com/repos/distri/undo/labels{/name}",
+        "releases_url": "https://api.github.com/repos/distri/undo/releases{/id}",
+        "created_at": "2013-11-25T01:31:38Z",
+        "updated_at": "2013-11-25T01:40:59Z",
+        "pushed_at": "2013-11-25T01:40:58Z",
+        "git_url": "git://github.com/distri/undo.git",
+        "ssh_url": "git@github.com:distri/undo.git",
+        "clone_url": "https://github.com/distri/undo.git",
+        "svn_url": "https://github.com/distri/undo",
+        "homepage": null,
+        "size": 336,
+        "stargazers_count": 0,
+        "watchers_count": 0,
+        "language": "CoffeeScript",
+        "has_issues": true,
+        "has_downloads": true,
+        "has_wiki": true,
+        "forks_count": 0,
+        "mirror_url": null,
+        "open_issues_count": 0,
+        "forks": 0,
+        "open_issues": 0,
+        "watchers": 0,
+        "default_branch": "master",
+        "master_branch": "master",
+        "permissions": {
+          "admin": true,
+          "push": true,
+          "pull": true
+        },
+        "organization": {
+          "login": "distri",
+          "id": 6005125,
+          "avatar_url": "https://identicons.github.com/f90c81ffc1498e260c820082f2e7ca5f.png",
+          "gravatar_id": null,
+          "url": "https://api.github.com/users/distri",
+          "html_url": "https://github.com/distri",
+          "followers_url": "https://api.github.com/users/distri/followers",
+          "following_url": "https://api.github.com/users/distri/following{/other_user}",
+          "gists_url": "https://api.github.com/users/distri/gists{/gist_id}",
+          "starred_url": "https://api.github.com/users/distri/starred{/owner}{/repo}",
+          "subscriptions_url": "https://api.github.com/users/distri/subscriptions",
+          "organizations_url": "https://api.github.com/users/distri/orgs",
+          "repos_url": "https://api.github.com/users/distri/repos",
+          "events_url": "https://api.github.com/users/distri/events{/privacy}",
+          "received_events_url": "https://api.github.com/users/distri/received_events",
+          "type": "Organization",
+          "site_admin": false
+        },
+        "network_count": 0,
+        "subscribers_count": 2,
+        "branch": "v0.2.0",
+        "defaultBranch": "master"
+      },
+      "dependencies": {
+        "command-stack": {
+          "source": {
+            "main.coffee.md": {
+              "path": "main.coffee.md",
+              "mode": "100644",
+              "content": "Command Stack\n-------------\n\nA simple stack based implementation of executable and undoable commands.\n\n    CommandStack = (stack=[]) ->\n      index = stack.length\n\n      execute: (command) ->\n        stack[index] = command\n        command.execute()\n\n        index += 1\n\n        # Be sure to blast obsolete redos\n        stack.length = index\n\n        return this\n\n      undo: ->\n        if @canUndo()\n          index -= 1\n\n          command = stack[index]\n          command.undo()\n\n          return command\n\n      redo: ->\n        if @canRedo()\n          command = stack[index]\n          command.execute()\n\n          index += 1\n\n          return command\n\n      current: ->\n        stack[index-1]\n\n      canUndo: ->\n        index > 0\n\n      canRedo: ->\n        stack[index]?\n\n      stack: ->\n        stack.slice(0, index)\n\n    module.exports = CommandStack\n\nTODO\n----\n\nIntegrate Observables\n",
+              "type": "blob"
+            },
+            "package.json": {
+              "path": "package.json",
+              "mode": "100644",
+              "content": "{\n  \"name\": \"commando\",\n  \"version\": \"0.9.0\",\n  \"description\": \"Simple Command Pattern\",\n  \"devDependencies\": {\n    \"coffee-script\": \"~1.6.3\",\n    \"mocha\": \"~1.12.0\",\n    \"uglify-js\": \"~2.3.6\"\n  },\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"https://github.com/STRd6/commando.git\"\n  },\n  \"files\": [\n    \"dist\"\n  ],\n  \"main\": \"dist/commando.js\"\n}\n",
+              "type": "blob"
+            },
+            "pixie.cson": {
+              "path": "pixie.cson",
+              "mode": "100644",
+              "content": "version: \"0.11.0\"\n",
+              "type": "blob"
+            },
+            "test/command_stack.coffee": {
+              "path": "test/command_stack.coffee",
+              "mode": "100644",
+              "content": "CommandStack = require \"../main\"\n\nok = assert\nequals = assert.equal\n\ndescribe \"CommandStack\", ->\n  it \"undo on an empty stack returns undefined\", ->\n    commandStack = CommandStack()\n  \n    equals commandStack.undo(), undefined\n  \n  it \"redo on an empty stack returns undefined\", ->\n    commandStack = CommandStack()\n  \n    equals commandStack.redo(), undefined\n  \n  it \"executes commands\", ->\n    command =\n      execute: ->\n        ok true, \"command executed\"\n  \n    commandStack = CommandStack()\n  \n    commandStack.execute command\n  \n  it \"can undo\", ->\n    command =\n      execute: ->\n      undo: ->\n        ok true, \"command executed\"\n  \n    commandStack = CommandStack()\n    commandStack.execute command\n  \n    commandStack.undo()\n  \n  it \"can redo\", ->\n    command =\n      execute: ->\n        ok true, \"command executed\"\n      undo: ->\n  \n    commandStack = CommandStack()\n    commandStack.execute command\n  \n    commandStack.undo()\n    commandStack.redo()\n  \n  it \"executes redone command once on redo\", ->\n    command =\n      execute: ->\n        ok true, \"command executed\"\n      undo: ->\n  \n    commandStack = CommandStack()\n    commandStack.execute command\n  \n    commandStack.undo()\n    commandStack.redo()\n  \n    equals commandStack.redo(), undefined\n    equals commandStack.redo(), undefined\n  \n  it \"command is returned when undone\", ->\n    command =\n      execute: ->\n      undo: ->\n  \n    commandStack = CommandStack()\n    commandStack.execute command\n  \n    equals commandStack.undo(), command, \"Undone command is returned\"\n  \n  it \"command is returned when redone\", ->\n    command =\n      execute: ->\n      undo: ->\n  \n    commandStack = CommandStack()\n    commandStack.execute command\n    commandStack.undo()\n  \n    equals commandStack.redo(), command, \"Redone command is returned\"\n  \n  it \"cannot redo an obsolete future\", ->\n    Command = ->\n      execute: ->\n      undo: ->\n  \n    commandStack = CommandStack()\n    commandStack.execute Command()\n    commandStack.execute Command()\n  \n    commandStack.undo()\n    commandStack.undo()\n  \n    equals commandStack.canRedo(), true\n  \n    commandStack.execute Command()\n  \n    equals commandStack.canRedo(), false\n",
+              "type": "blob"
+            }
+          },
+          "distribution": {
+            "main": {
+              "path": "main",
+              "content": "(function() {\n  var CommandStack;\n\n  CommandStack = function(stack) {\n    var index;\n    if (stack == null) {\n      stack = [];\n    }\n    index = stack.length;\n    return {\n      execute: function(command) {\n        stack[index] = command;\n        command.execute();\n        index += 1;\n        stack.length = index;\n        return this;\n      },\n      undo: function() {\n        var command;\n        if (this.canUndo()) {\n          index -= 1;\n          command = stack[index];\n          command.undo();\n          return command;\n        }\n      },\n      redo: function() {\n        var command;\n        if (this.canRedo()) {\n          command = stack[index];\n          command.execute();\n          index += 1;\n          return command;\n        }\n      },\n      current: function() {\n        return stack[index - 1];\n      },\n      canUndo: function() {\n        return index > 0;\n      },\n      canRedo: function() {\n        return stack[index] != null;\n      },\n      stack: function() {\n        return stack.slice(0, index);\n      }\n    };\n  };\n\n  module.exports = CommandStack;\n\n}).call(this);\n\n//# sourceURL=main.coffee",
+              "type": "blob"
+            },
+            "package": {
+              "path": "package",
+              "content": "module.exports = {\"name\":\"commando\",\"version\":\"0.9.0\",\"description\":\"Simple Command Pattern\",\"devDependencies\":{\"coffee-script\":\"~1.6.3\",\"mocha\":\"~1.12.0\",\"uglify-js\":\"~2.3.6\"},\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/STRd6/commando.git\"},\"files\":[\"dist\"],\"main\":\"dist/commando.js\"};",
+              "type": "blob"
+            },
+            "pixie": {
+              "path": "pixie",
+              "content": "module.exports = {\"version\":\"0.11.0\"};",
+              "type": "blob"
+            },
+            "test/command_stack": {
+              "path": "test/command_stack",
+              "content": "(function() {\n  var CommandStack, equals, ok;\n\n  CommandStack = require(\"../main\");\n\n  ok = assert;\n\n  equals = assert.equal;\n\n  describe(\"CommandStack\", function() {\n    it(\"undo on an empty stack returns undefined\", function() {\n      var commandStack;\n      commandStack = CommandStack();\n      return equals(commandStack.undo(), void 0);\n    });\n    it(\"redo on an empty stack returns undefined\", function() {\n      var commandStack;\n      commandStack = CommandStack();\n      return equals(commandStack.redo(), void 0);\n    });\n    it(\"executes commands\", function() {\n      var command, commandStack;\n      command = {\n        execute: function() {\n          return ok(true, \"command executed\");\n        }\n      };\n      commandStack = CommandStack();\n      return commandStack.execute(command);\n    });\n    it(\"can undo\", function() {\n      var command, commandStack;\n      command = {\n        execute: function() {},\n        undo: function() {\n          return ok(true, \"command executed\");\n        }\n      };\n      commandStack = CommandStack();\n      commandStack.execute(command);\n      return commandStack.undo();\n    });\n    it(\"can redo\", function() {\n      var command, commandStack;\n      command = {\n        execute: function() {\n          return ok(true, \"command executed\");\n        },\n        undo: function() {}\n      };\n      commandStack = CommandStack();\n      commandStack.execute(command);\n      commandStack.undo();\n      return commandStack.redo();\n    });\n    it(\"executes redone command once on redo\", function() {\n      var command, commandStack;\n      command = {\n        execute: function() {\n          return ok(true, \"command executed\");\n        },\n        undo: function() {}\n      };\n      commandStack = CommandStack();\n      commandStack.execute(command);\n      commandStack.undo();\n      commandStack.redo();\n      equals(commandStack.redo(), void 0);\n      return equals(commandStack.redo(), void 0);\n    });\n    it(\"command is returned when undone\", function() {\n      var command, commandStack;\n      command = {\n        execute: function() {},\n        undo: function() {}\n      };\n      commandStack = CommandStack();\n      commandStack.execute(command);\n      return equals(commandStack.undo(), command, \"Undone command is returned\");\n    });\n    it(\"command is returned when redone\", function() {\n      var command, commandStack;\n      command = {\n        execute: function() {},\n        undo: function() {}\n      };\n      commandStack = CommandStack();\n      commandStack.execute(command);\n      commandStack.undo();\n      return equals(commandStack.redo(), command, \"Redone command is returned\");\n    });\n    return it(\"cannot redo an obsolete future\", function() {\n      var Command, commandStack;\n      Command = function() {\n        return {\n          execute: function() {},\n          undo: function() {}\n        };\n      };\n      commandStack = CommandStack();\n      commandStack.execute(Command());\n      commandStack.execute(Command());\n      commandStack.undo();\n      commandStack.undo();\n      equals(commandStack.canRedo(), true);\n      commandStack.execute(Command());\n      return equals(commandStack.canRedo(), false);\n    });\n  });\n\n}).call(this);\n\n//# sourceURL=test/command_stack.coffee",
+              "type": "blob"
+            }
+          },
+          "progenitor": {
+            "url": "http://strd6.github.io/editor/"
+          },
+          "version": "0.11.0",
+          "entryPoint": "main",
+          "repository": {
+            "id": 11981428,
+            "name": "command-stack",
+            "full_name": "distri/command-stack",
+            "owner": {
+              "login": "distri",
+              "id": 6005125,
+              "avatar_url": "https://identicons.github.com/f90c81ffc1498e260c820082f2e7ca5f.png",
+              "gravatar_id": null,
+              "url": "https://api.github.com/users/distri",
+              "html_url": "https://github.com/distri",
+              "followers_url": "https://api.github.com/users/distri/followers",
+              "following_url": "https://api.github.com/users/distri/following{/other_user}",
+              "gists_url": "https://api.github.com/users/distri/gists{/gist_id}",
+              "starred_url": "https://api.github.com/users/distri/starred{/owner}{/repo}",
+              "subscriptions_url": "https://api.github.com/users/distri/subscriptions",
+              "organizations_url": "https://api.github.com/users/distri/orgs",
+              "repos_url": "https://api.github.com/users/distri/repos",
+              "events_url": "https://api.github.com/users/distri/events{/privacy}",
+              "received_events_url": "https://api.github.com/users/distri/received_events",
+              "type": "Organization",
+              "site_admin": false
+            },
+            "private": false,
+            "html_url": "https://github.com/distri/command-stack",
+            "description": "A stack for holding command objects.",
+            "fork": false,
+            "url": "https://api.github.com/repos/distri/command-stack",
+            "forks_url": "https://api.github.com/repos/distri/command-stack/forks",
+            "keys_url": "https://api.github.com/repos/distri/command-stack/keys{/key_id}",
+            "collaborators_url": "https://api.github.com/repos/distri/command-stack/collaborators{/collaborator}",
+            "teams_url": "https://api.github.com/repos/distri/command-stack/teams",
+            "hooks_url": "https://api.github.com/repos/distri/command-stack/hooks",
+            "issue_events_url": "https://api.github.com/repos/distri/command-stack/issues/events{/number}",
+            "events_url": "https://api.github.com/repos/distri/command-stack/events",
+            "assignees_url": "https://api.github.com/repos/distri/command-stack/assignees{/user}",
+            "branches_url": "https://api.github.com/repos/distri/command-stack/branches{/branch}",
+            "tags_url": "https://api.github.com/repos/distri/command-stack/tags",
+            "blobs_url": "https://api.github.com/repos/distri/command-stack/git/blobs{/sha}",
+            "git_tags_url": "https://api.github.com/repos/distri/command-stack/git/tags{/sha}",
+            "git_refs_url": "https://api.github.com/repos/distri/command-stack/git/refs{/sha}",
+            "trees_url": "https://api.github.com/repos/distri/command-stack/git/trees{/sha}",
+            "statuses_url": "https://api.github.com/repos/distri/command-stack/statuses/{sha}",
+            "languages_url": "https://api.github.com/repos/distri/command-stack/languages",
+            "stargazers_url": "https://api.github.com/repos/distri/command-stack/stargazers",
+            "contributors_url": "https://api.github.com/repos/distri/command-stack/contributors",
+            "subscribers_url": "https://api.github.com/repos/distri/command-stack/subscribers",
+            "subscription_url": "https://api.github.com/repos/distri/command-stack/subscription",
+            "commits_url": "https://api.github.com/repos/distri/command-stack/commits{/sha}",
+            "git_commits_url": "https://api.github.com/repos/distri/command-stack/git/commits{/sha}",
+            "comments_url": "https://api.github.com/repos/distri/command-stack/comments{/number}",
+            "issue_comment_url": "https://api.github.com/repos/distri/command-stack/issues/comments/{number}",
+            "contents_url": "https://api.github.com/repos/distri/command-stack/contents/{+path}",
+            "compare_url": "https://api.github.com/repos/distri/command-stack/compare/{base}...{head}",
+            "merges_url": "https://api.github.com/repos/distri/command-stack/merges",
+            "archive_url": "https://api.github.com/repos/distri/command-stack/{archive_format}{/ref}",
+            "downloads_url": "https://api.github.com/repos/distri/command-stack/downloads",
+            "issues_url": "https://api.github.com/repos/distri/command-stack/issues{/number}",
+            "pulls_url": "https://api.github.com/repos/distri/command-stack/pulls{/number}",
+            "milestones_url": "https://api.github.com/repos/distri/command-stack/milestones{/number}",
+            "notifications_url": "https://api.github.com/repos/distri/command-stack/notifications{?since,all,participating}",
+            "labels_url": "https://api.github.com/repos/distri/command-stack/labels{/name}",
+            "releases_url": "https://api.github.com/repos/distri/command-stack/releases{/id}",
+            "created_at": "2013-08-08T16:51:40Z",
+            "updated_at": "2013-11-25T00:40:55Z",
+            "pushed_at": "2013-11-25T00:40:53Z",
+            "git_url": "git://github.com/distri/command-stack.git",
+            "ssh_url": "git@github.com:distri/command-stack.git",
+            "clone_url": "https://github.com/distri/command-stack.git",
+            "svn_url": "https://github.com/distri/command-stack",
+            "homepage": "",
+            "size": 664,
+            "stargazers_count": 0,
+            "watchers_count": 0,
+            "language": "CoffeeScript",
+            "has_issues": true,
+            "has_downloads": true,
+            "has_wiki": true,
+            "forks_count": 0,
+            "mirror_url": null,
+            "open_issues_count": 0,
+            "forks": 0,
+            "open_issues": 0,
+            "watchers": 0,
+            "default_branch": "master",
+            "master_branch": "master",
+            "permissions": {
+              "admin": true,
+              "push": true,
+              "pull": true
+            },
+            "organization": {
+              "login": "distri",
+              "id": 6005125,
+              "avatar_url": "https://identicons.github.com/f90c81ffc1498e260c820082f2e7ca5f.png",
+              "gravatar_id": null,
+              "url": "https://api.github.com/users/distri",
+              "html_url": "https://github.com/distri",
+              "followers_url": "https://api.github.com/users/distri/followers",
+              "following_url": "https://api.github.com/users/distri/following{/other_user}",
+              "gists_url": "https://api.github.com/users/distri/gists{/gist_id}",
+              "starred_url": "https://api.github.com/users/distri/starred{/owner}{/repo}",
+              "subscriptions_url": "https://api.github.com/users/distri/subscriptions",
+              "organizations_url": "https://api.github.com/users/distri/orgs",
+              "repos_url": "https://api.github.com/users/distri/repos",
+              "events_url": "https://api.github.com/users/distri/events{/privacy}",
+              "received_events_url": "https://api.github.com/users/distri/received_events",
+              "type": "Organization",
+              "site_admin": false
+            },
+            "network_count": 0,
+            "subscribers_count": 1,
+            "branch": "v0.11.0",
+            "defaultBranch": "master"
+          },
+          "dependencies": {}
+        }
+      }
     },
     "util": {
       "source": {

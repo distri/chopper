@@ -36,6 +36,12 @@
             </div>
             <div class="content"><pre><code class="lang-coffeescript">global.Observable = require <span class="string">"observable"</span>
 Point = require <span class="string">"point"</span>
+Size = require <span class="string">"./lib/size"</span>
+Matrix = require <span class="string">"matrix"</span>
+
+{sqrt} = Math
+
+Matrix.Point = Point
 
 Point::<span class="function"><span class="title">scale</span></span> = (width, height) -&gt;
   <span class="keyword">if</span> <span class="keyword">typeof</span> width <span class="keyword">is</span> <span class="string">"object"</span>
@@ -46,7 +52,38 @@ Point::<span class="function"><span class="title">scale</span></span> = (width, 
   Point(<span class="property">@x</span> * width, <span class="property">@y</span> * height)
 
 Point::<span class="function"><span class="title">abs</span></span> = -&gt;
-  Point(Math.abs(<span class="property">@x</span>), Math.abs(<span class="property">@y</span>))</code></pre>
+  Point(Math.abs(<span class="property">@x</span>), Math.abs(<span class="property">@y</span>))
+
+Matrix::<span class="function"><span class="title">scaleComponent</span></span> = -&gt;
+  Size sqrt(<span class="property">@a</span> * <span class="property">@a</span> + <span class="property">@b</span> * <span class="property">@b</span>), sqrt(<span class="property">@c</span> * <span class="property">@c</span> + <span class="property">@d</span> * <span class="property">@d</span>)
+
+Matrix::<span class="function"><span class="title">translationComponent</span></span> = -&gt;
+  Point <span class="property">@tx</span>, <span class="property">@ty</span></code></pre>
+</div>
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              <div class="pilwrap">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <p>Convert matrix to CSS string.</p>
+
+            </div>
+            <div class="content"><pre><code class="lang-coffeescript"><span class="keyword">if</span> navigator.userAgent.match <span class="regexp">/WebKit/</span>
+  prefix = <span class="string">"-webkit-"</span>
+<span class="keyword">else</span>
+  prefix = <span class="string">""</span>
+
+Matrix::<span class="function"><span class="title">css</span></span> = -&gt;
+  <span class="string">"<span class="subst">#{prefix}</span>transform: matrix(<span class="subst">#{@a}</span>, <span class="subst">#{@b}</span>, <span class="subst">#{@c}</span>, <span class="subst">#{@d}</span>, <span class="subst">#{@tx}</span>, <span class="subst">#{@ty}</span>);"</span>
+
+Matrix.translation = Matrix.<span class="function"><span class="title">translate</span></span> = (x, y) -&gt;
+  <span class="keyword">if</span> <span class="keyword">typeof</span> x <span class="keyword">is</span> <span class="string">"object"</span>
+    {x, y} = x
+
+  Matrix(<span class="number">1</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>, x, y)</code></pre>
 </div>
         </li>
         

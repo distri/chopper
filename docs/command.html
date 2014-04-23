@@ -2,7 +2,7 @@
 
 <html>
 <head>
-  <title>hotkey_actions</title>
+  <title>command</title>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
   <link rel="stylesheet" media="all" href="http://strd6.github.io/cdn/parallel/docco.css" />
@@ -18,105 +18,58 @@
               <div class="pilwrap">
                 <a class="pilcrow" href="#section-1">&#182;</a>
               </div>
-              <h1 id="hotkey-actions">Hotkey Actions</h1>
-
-            </div>
-            <div class="content"><pre><code class="lang-coffeescript">
-</code></pre>
-</div>
-        </li>
-        
-        
-        <li id="section-2">
-            <div class="annotation">
-              <div class="pilwrap">
-                <a class="pilcrow" href="#section-2">&#182;</a>
-              </div>
               
             </div>
-            <div class="content"><pre><code class="lang-coffeescript">require <span class="string">"jquery-hotkeys"</span>
+            <div class="content"><pre><code class="lang-coffeescript">Command = require <span class="string">"./lib/command"</span>
 
-Item = require <span class="string">"./item"</span>
-Point = require <span class="string">"point"</span>
+module.<span class="function"><span class="title">exports</span></span> = (I={}, self) -&gt;
+  self.include Command
 
-module.exports = <span class="function"><span class="title">Actions</span></span> = (state) -&gt;
-  Object.keys(bindings).forEach (hotkey) -&gt;
-    $(document).<span class="literal">on</span> <span class="string">"keydown"</span>, <span class="literal">null</span>, hotkey, (event) -&gt;
-      event.preventDefault()
+  C = self.Command.register
 
-      actions[bindings[hotkey]](state())
+  <span class="comment"># TODO: Add, Delete, Raise, Lower</span>
 
-Actions.<span class="function"><span class="title">hotkeys</span></span> = -&gt;
-  objectToArray(bindings)
+  C <span class="string">"Transform"</span>, (data) -&gt;
+    data.previous ?= self.items.get(data.index).transform()
 
-bindings =
-  f1: <span class="string">"displayHelp"</span>
-  pageup: <span class="string">"raiseToTop"</span>
-  del: <span class="string">"delete"</span>
-  <span class="keyword">return</span>: <span class="string">"duplicate"</span>
-  <span class="string">"ctrl+s"</span>: <span class="string">"save"</span>
-  <span class="string">"ctrl+z"</span>: <span class="string">"undo"</span>
-  <span class="string">"ctrl+y"</span>: <span class="string">"redo"</span>
+    execute: -&gt;
+      self.items.get(data.index).transform data.transform
 
-actions =
-  displayHelp: -&gt;
-    $(<span class="string">".help"</span>).toggleClass(<span class="string">"up"</span>)
-  raiseToTop: ({item, view, items}) -&gt;
-    items.push items.remove item
-  <span class="keyword">delete</span>: ({item, view, items}) -&gt;
-    items.remove item
-  duplicate: ({item, view, items}) -&gt;
-    newItem = Item item.copy()
-    newItem.position newItem.position().add(Point(<span class="number">20</span>, <span class="number">20</span>))
-    items.push newItem
-  undo: ({editor}) -&gt;
-    editor.undo()
-  redo: ({editor}) -&gt;
-    editor.redo()</code></pre>
-</div>
-        </li>
-        
-        
-        <li id="section-3">
-            <div class="annotation">
-              <div class="pilwrap">
-                <a class="pilcrow" href="#section-3">&#182;</a>
-              </div>
-              <p>Saves to address bar for now.</p>
+    undo: -&gt;
+      self.items.get(data.index).transform data.previous
 
-            </div>
-            <div class="content"><pre><code class="lang-coffeescript">  save: () -&gt;
-    data = appData()
-    console.log data, data.length
-    location.hash = data</code></pre>
-</div>
-        </li>
-        
-        
-        <li id="section-4">
-            <div class="annotation">
-              <div class="pilwrap">
-                <a class="pilcrow" href="#section-4">&#182;</a>
-              </div>
-              <h2 id="helpers">Helpers</h2>
+    set: (transform) -&gt;
+      data.transform = transform
+      <span class="property">@execute</span>()
 
-            </div>
-            <div class="content"><pre><code class="lang-coffeescript">
-</code></pre>
-</div>
-        </li>
-        
-        
-        <li id="section-5">
-            <div class="annotation">
-              <div class="pilwrap">
-                <a class="pilcrow" href="#section-5">&#182;</a>
-              </div>
-              
-            </div>
-            <div class="content"><pre><code class="lang-coffeescript"><span class="function"><span class="title">objectToArray</span></span> = (object) -&gt;
-  Object.keys(object).map (key) -&gt;
-    [key, object[key]]</code></pre>
+  C <span class="string">"Composite"</span>, (data) -&gt;
+    <span class="keyword">if</span> data.commands
+      <span class="comment"># We came from JSON so rehydrate the commands.</span>
+      data.commands = data.commands.map self.Command.parse
+    <span class="keyword">else</span>
+      data.commands = []
+
+    commands = data.commands
+
+    execute: -&gt;
+      commands.invoke <span class="string">"execute"</span>
+
+    undo: -&gt;
+      <span class="comment"># Undo last command first because the order matters</span>
+      commands.copy().reverse().invoke <span class="string">"undo"</span>
+
+    push: (command, noExecute) -&gt;
+      <span class="comment"># We execute commands immediately when pushed in the compound</span>
+      <span class="comment"># so that the effects of events during mousemove appear</span>
+      <span class="comment"># immediately but they are all revoked together on undo/redo</span>
+      <span class="comment"># Passing noExecute as true will skip executing if we are</span>
+      <span class="comment"># adding commands that have already executed.</span>
+      commands.push command
+      command.execute() <span class="keyword">unless</span> noExecute
+
+    toJSON: -&gt;
+      extend {}, data,
+        commands: commands.invoke <span class="string">"toJSON"</span></code></pre>
 </div>
         </li>
         
