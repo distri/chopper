@@ -37,40 +37,29 @@
             <div class="content"><pre><code class="lang-coffeescript">Composition = require <span class="string">"composition"</span>
 Observable = require <span class="string">"observable"</span>
 Point = require <span class="string">"point"</span>
+Matrix = require <span class="string">"matrix"</span>
 Size = require <span class="string">"./lib/size"</span>
 {extend, defaults} = require <span class="string">"util"</span>
 
 module.<span class="function"><span class="title">exports</span></span> = (I={}) -&gt;
   defaults I,
-    position: Point(<span class="number">0</span>, <span class="number">0</span>)
-    scale: Point(<span class="number">1</span>, <span class="number">1</span>)
-    rotation: <span class="number">0</span>
-    size: Size(<span class="number">0</span>, <span class="number">0</span>)
+    transform: Matrix()
+    size: Size(<span class="number">1</span>, <span class="number">1</span>)
 
   self = Composition(I).extend
+    position: -&gt;
+      self.transform().translationComponent()
+
     copy: -&gt;
       extend {}, I
+
+    anchor: -&gt;
+      Point(<span class="number">1</span>, <span class="number">1</span>).scale(self.size().scale(<span class="number">0.5</span>))
+
     center: -&gt;
-      size = Point(<span class="number">1</span>, <span class="number">1</span>).scale(self.size()).scale(<span class="number">0.5</span>)
+      self.anchor().add(self.position())
 
-      self.position().add(size)
-
-  self.attrObservable <span class="string">"position"</span>, <span class="string">"rotation"</span>, <span class="string">"scale"</span>, <span class="string">"size"</span>, <span class="string">"src"</span>
-
-  <span class="function"><span class="title">translation</span></span> = -&gt;
-    {x, y} = self.position()
-
-    <span class="string">"translate(<span class="subst">#{x}</span>px, <span class="subst">#{y}</span>px)"</span>
-
-  <span class="function"><span class="title">scale</span></span> = -&gt;
-    {x, y} = self.scale()
-
-    <span class="string">"scale(<span class="subst">#{x}</span>,<span class="subst">#{y}</span>)"</span>
-
-  <span class="keyword">if</span> navigator.userAgent.match <span class="regexp">/WebKit/</span>
-    prefix = <span class="string">"-webkit-"</span>
-  <span class="keyword">else</span>
-    prefix = <span class="string">""</span>
+  self.attrObservable <span class="string">"transform"</span>, <span class="string">"src"</span>, <span class="string">"size"</span>
 
   <span class="function"><span class="title">autosize</span></span> = (src) -&gt;
     img = document.createElement <span class="string">"img"</span>
@@ -83,7 +72,7 @@ module.<span class="function"><span class="title">exports</span></span> = (I={})
   autosize self.src()
 
   self.css = Observable -&gt;
-    <span class="string">"<span class="subst">#{prefix}</span>transform: <span class="subst">#{translation()}</span> <span class="subst">#{scale()}</span> rotate(<span class="subst">#{self.rotation()}</span>rad);"</span>
+    self.transform().css()
 
   <span class="keyword">return</span> self</code></pre>
 </div>
