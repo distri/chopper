@@ -26,7 +26,9 @@ Item Model
         center: ->
           self.anchor().add(self.position())
 
-      self.attrObservable "transform", "src", "size"
+      self.attrObservable "src"
+      self.attrModel "transform", Matrix
+      self.attrModel "size", Size
 
       autosize = (src) ->
         img = document.createElement "img"
