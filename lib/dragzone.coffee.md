@@ -1,6 +1,7 @@
 Highway through the Dragger Zone
 ================================
 
+    Matrix = require "matrix"
     Point = require "point"
 
     debugPoint = document.createElement "div"
@@ -9,20 +10,23 @@ Highway through the Dragger Zone
 
     Actions = require "../hotkey_actions"
 
-    module.exports = ($element, items) ->
+    module.exports = ($element, editor) ->
       active = false
       activeItem = null
       activeView = null
-      offset = null
+      anchor = null
       startPosition = null
-      initialRotation = null
-      initialScale = null
+      initialTransform = null
+      lastCommand = null
       center = null
+      scaling = null
+      rotating = null
 
       Actions ->
-        items: items
+        items: editor.items
         item: activeItem
         view: activeView
+        editor: editor
 
       $element.bind
         "touchstart mousedown": (event) ->
@@ -32,25 +36,32 @@ Highway through the Dragger Zone
 
             active = true
             activeView = target
-            activeItem = items.get $(".items img").index(target)
+            index = $(".items img").index(target)
+            activeItem = editor.items.get index
+            initialTransform = activeItem.transform()
             center = activeItem.center()
+            anchor = activeItem.anchor()
+
+            lastCommand = editor.Command.Transform
+              index: index
+              transform: initialTransform
+              previous: initialTransform
+            
+            editor.execute lastCommand
 
             $(debugPoint).css
               top: center.y
               left: center.x
 
-            initialScale = null
-            initialRotation = null
+            scaling = false
+            rotating = false
 
             if event.shiftKey
-              initialScale = activeItem.scale()
+              scaling = true
             else if event.ctrlKey or event.metaKey
-              initialRotation = activeItem.rotation()
+              rotating = true
 
             startPosition = localPosition(event)
-            itemStart = activeItem.position()
-
-            offset = itemStart.subtract startPosition
 
           return
 
@@ -58,22 +69,22 @@ Highway through the Dragger Zone
           return unless active
           p = localPosition(event)
 
-          # TODO: Need to use more generalized transform concatenation to allow 
+          # TODO: Need to use more generalized transform concatenation to allow
           # scale and rotation to occur independently
 
-          if initialScale
+          if scaling
             initialVec = startPosition.subtract center
             currentVec = p.subtract center
-            deltaScale = Point currentVec.x / initialVec.x, currentVec.y / initialVec.y
-
-            activeItem.scale Point deltaScale.x * initialScale.x, deltaScale.y * initialScale.y
-          else if initialRotation?
+            deltaTransform = Matrix.scale currentVec.x / initialVec.x, currentVec.y / initialVec.y, initialTransform.translationComponent()
+          else if rotating
             vec = p.subtract center
             initialVec = startPosition.subtract center
-            deltaRotation = Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x)
-            activeItem.rotation initialRotation + deltaRotation
+            deltaTransform = Matrix.rotation Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x), initialTransform.translationComponent()
           else
-            activeItem.position p.add offset
+            deltaTransform = Matrix.translation(p.subtract(startPosition))
+
+          if deltaTransform
+            lastCommand.set deltaTransform.concat initialTransform
 
         "touchend mouseup": (event) ->
           active = false
