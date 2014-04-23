@@ -59,7 +59,9 @@ module.<span class="function"><span class="title">exports</span></span> = (I={})
     center: -&gt;
       self.anchor().add(self.position())
 
-  self.attrObservable <span class="string">"transform"</span>, <span class="string">"src"</span>, <span class="string">"size"</span>
+  self.attrObservable <span class="string">"src"</span>
+  self.attrModel <span class="string">"transform"</span>, Matrix
+  self.attrModel <span class="string">"size"</span>, Size
 
   <span class="function"><span class="title">autosize</span></span> = (src) -&gt;
     img = document.createElement <span class="string">"img"</span>
