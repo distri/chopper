@@ -14,7 +14,7 @@ window["distri/chopper:commands"]({
     },
     "command.coffee.md": {
       "path": "command.coffee.md",
-      "content": "    Command = require \"./lib/command\"\n\n    module.exports = (I={}, self) ->\n      self.include Command\n\n      C = self.Command.register\n\n      # TODO: Add, Delete, Raise, Lower\n\n      C \"Transform\", (data) ->\n        data.previous ?= self.items.get(data.index).transform()\n\n        execute: ->\n          self.items.get(data.index).transform data.transform()\n\n        undo: ->\n          self.items.get(data.index).transfrom data.previous\n\n      C \"Composite\", (data) ->\n        if data.commands\n          # We came from JSON so rehydrate the commands.\n          data.commands = data.commands.map self.Command.parse\n        else\n          data.commands = []\n\n        commands = data.commands\n\n        execute: ->\n          commands.invoke \"execute\"\n\n        undo: ->\n          # Undo last command first because the order matters\n          commands.copy().reverse().invoke \"undo\"\n\n        push: (command, noExecute) ->\n          # We execute commands immediately when pushed in the compound\n          # so that the effects of events during mousemove appear\n          # immediately but they are all revoked together on undo/redo\n          # Passing noExecute as true will skip executing if we are\n          # adding commands that have already executed.\n          commands.push command\n          command.execute() unless noExecute\n\n        toJSON: ->\n          extend {}, data,\n            commands: commands.invoke \"toJSON\"\n",
+      "content": "    Command = require \"./lib/command\"\n\n    module.exports = (I={}, self) ->\n      self.include Command\n\n      C = self.Command.register\n\n      # TODO: Add, Delete, Raise, Lower\n\n      C \"Transform\", (data) ->\n        data.previous ?= self.items.get(data.index).transform()\n\n        execute: ->\n          self.items.get(data.index).transform data.transform\n\n        undo: ->\n          self.items.get(data.index).transform data.previous\n\n        set: (transform) ->\n          data.transform = transform\n          @execute()\n\n      C \"Composite\", (data) ->\n        if data.commands\n          # We came from JSON so rehydrate the commands.\n          data.commands = data.commands.map self.Command.parse\n        else\n          data.commands = []\n\n        commands = data.commands\n\n        execute: ->\n          commands.invoke \"execute\"\n\n        undo: ->\n          # Undo last command first because the order matters\n          commands.copy().reverse().invoke \"undo\"\n\n        push: (command, noExecute) ->\n          # We execute commands immediately when pushed in the compound\n          # so that the effects of events during mousemove appear\n          # immediately but they are all revoked together on undo/redo\n          # Passing noExecute as true will skip executing if we are\n          # adding commands that have already executed.\n          commands.push command\n          command.execute() unless noExecute\n\n        toJSON: ->\n          extend {}, data,\n            commands: commands.invoke \"toJSON\"\n",
       "mode": "100644",
       "type": "blob"
     },
@@ -26,13 +26,13 @@ window["distri/chopper:commands"]({
     },
     "editor.coffee.md": {
       "path": "editor.coffee.md",
-      "content": "Editor\n======\n\n    Item = require \"./item\"\n\n    Composition = require \"composition\"\n\n    Command = require \"./command\"\n\n    module.exports = (I={}) ->\n      self = Composition(I)\n\n      self.include Command\n\n      self.extend\n        items: Observable []\n\n        load: (data) ->\n          self.items data.map Item\n\n      return self\n",
+      "content": "Editor\n======\n\n    Item = require \"./item\"\n\n    Composition = require \"composition\"\n\n    Command = require \"./command\"\n    Undo = require \"undo\"\n\n    module.exports = (I={}) ->\n      self = Composition(I)\n\n      self.include Command, Undo\n\n      self.extend\n        items: Observable []\n\n        load: (data) ->\n          self.items data.map Item\n\n        \n\n      return self\n",
       "mode": "100644",
       "type": "blob"
     },
     "hotkey_actions.coffee.md": {
       "path": "hotkey_actions.coffee.md",
-      "content": "Hotkey Actions\n==============\n\n    require \"jquery-hotkeys\"\n\n    Item = require \"./item\"\n    Point = require \"point\"\n\n    module.exports = Actions = (state) ->\n      Object.keys(bindings).forEach (hotkey) ->\n        $(document).on \"keydown\", null, hotkey, (event) ->\n          event.preventDefault()\n\n          actions[bindings[hotkey]](state())\n\n    Actions.hotkeys = ->\n      objectToArray(bindings)\n\n    bindings =\n      f1: \"displayHelp\"\n      pageup: \"raiseToTop\"\n      del: \"delete\"\n      return: \"duplicate\"\n      \"ctrl+s\": \"save\"\n\n    actions =\n      displayHelp: ->\n        $(\".help\").toggleClass(\"up\")\n      raiseToTop: ({item, view, items}) ->\n        items.push items.remove item\n      delete: ({item, view, items}) ->\n        items.remove item\n      duplicate: ({item, view, items}) ->\n        newItem = Item item.copy()\n        newItem.position newItem.position().add(Point(20, 20))\n        items.push newItem\n\nSaves to address bar for now.\n\n      save: () ->\n        data = appData()\n        console.log data, data.length\n        location.hash = data\n\nHelpers\n-------\n\n    objectToArray = (object) ->\n      Object.keys(object).map (key) ->\n        [key, object[key]]\n",
+      "content": "Hotkey Actions\n==============\n\n    require \"jquery-hotkeys\"\n\n    Item = require \"./item\"\n    Point = require \"point\"\n\n    module.exports = Actions = (state) ->\n      Object.keys(bindings).forEach (hotkey) ->\n        $(document).on \"keydown\", null, hotkey, (event) ->\n          event.preventDefault()\n\n          actions[bindings[hotkey]](state())\n\n    Actions.hotkeys = ->\n      objectToArray(bindings)\n\n    bindings =\n      f1: \"displayHelp\"\n      pageup: \"raiseToTop\"\n      del: \"delete\"\n      return: \"duplicate\"\n      \"ctrl+s\": \"save\"\n      \"ctrl+z\": \"undo\"\n      \"ctrl+y\": \"redo\"\n\n    actions =\n      displayHelp: ->\n        $(\".help\").toggleClass(\"up\")\n      raiseToTop: ({item, view, items}) ->\n        items.push items.remove item\n      delete: ({item, view, items}) ->\n        items.remove item\n      duplicate: ({item, view, items}) ->\n        newItem = Item item.copy()\n        newItem.position newItem.position().add(Point(20, 20))\n        items.push newItem\n      undo: ({editor}) ->\n        editor.undo()\n      redo: ({editor}) ->\n        editor.redo()\n\nSaves to address bar for now.\n\n      save: () ->\n        data = appData()\n        console.log data, data.length\n        location.hash = data\n\nHelpers\n-------\n\n    objectToArray = (object) ->\n      Object.keys(object).map (key) ->\n        [key, object[key]]\n",
       "mode": "100644",
       "type": "blob"
     },
@@ -44,13 +44,13 @@ window["distri/chopper:commands"]({
     },
     "lib/command.coffee.md": {
       "path": "lib/command.coffee.md",
-      "content": "Command\n=======\n\n    {extend} = require \"util\"\n\nCommands that can be done/undone in the editor.\n\n    module.exports = (I={}, self) ->\n      self.Command =\n\nEach command to inherits a toJSON method and registers itself to be \nde-serialized by name.\n\n*IMPORTANT:* If the names change then old command data may fail to load in newer\nversions.\n\n        register: (name, constructor) ->\n          self.Command[name] = (data={}) ->\n            data = extend {}, data\n            data.name = name\n  \n            command = constructor(data)\n  \n            command.toJSON ?= ->\n              # TODO: May want to return a copy of the data to be super-duper safe\n              data\n  \n            return command\n\n        parse: (commandData) ->\n          self.Command[commandData.name](commandData)\n\n      return self\n",
+      "content": "Command\n=======\n\n    {extend} = require \"util\"\n\nCommands that can be done/undone in the editor.\n\n    module.exports = (I={}, self) ->\n      self.Command =\n\nEach command to inherits a toJSON method and registers itself to be\nde-serialized by name.\n\n*IMPORTANT:* If the names change then old command data may fail to load in newer\nversions.\n\n        register: (name, constructor) ->\n          self.Command[name] = (data={}) ->\n            data = extend {}, data\n            data.name = name\n\n            command = constructor(data)\n\n            command.toJSON ?= ->\n              # TODO: May want to return a copy of the data to be super-duper safe\n              data\n\n            return command\n\n        parse: (commandData) ->\n          self.Command[commandData.name](commandData)\n\n      return self\n",
       "mode": "100644",
       "type": "blob"
     },
     "lib/dragzone.coffee.md": {
       "path": "lib/dragzone.coffee.md",
-      "content": "Highway through the Dragger Zone\n================================\n\n    Matrix = require \"matrix\"\n    Point = require \"point\"\n\n    debugPoint = document.createElement \"div\"\n    debugPoint.className = \"point\"\n    document.body.appendChild debugPoint\n\n    Actions = require \"../hotkey_actions\"\n\n    module.exports = ($element, editor) ->\n      active = false\n      activeItem = null\n      activeView = null\n      anchor = null\n      startPosition = null\n      initialTransform = null\n      center = null\n      scaling = null\n      rotating = null\n\n      Actions ->\n        items: editor.items\n        item: activeItem\n        view: activeView\n\n      $element.bind\n        \"touchstart mousedown\": (event) ->\n          $target = $(target = event.target)\n          if $target.is \"img\"\n            event.preventDefault()\n\n            active = true\n            activeView = target\n            activeItem = editor.items.get $(\".items img\").index(target)\n            initialTransform = activeItem.transform()\n            center = activeItem.center()\n            anchor = activeItem.anchor()\n\n            console.log anchor\n\n            $(debugPoint).css\n              top: center.y\n              left: center.x\n\n            scaling = false\n            rotating = false\n\n            if event.shiftKey\n              scaling = true\n            else if event.ctrlKey or event.metaKey\n              rotating = true\n\n            startPosition = localPosition(event)\n\n          return\n\n        \"touchmove mousemove\": (event) ->\n          return unless active\n          p = localPosition(event)\n\n          # TODO: Need to use more generalized transform concatenation to allow\n          # scale and rotation to occur independently\n\n          if scaling\n            initialVec = startPosition.subtract center\n            currentVec = p.subtract center\n            deltaTransform = Matrix.scale currentVec.x / initialVec.x, currentVec.y / initialVec.y, initialTransform.translationComponent()\n          else if rotating\n            vec = p.subtract center\n            initialVec = startPosition.subtract center\n            deltaTransform = Matrix.rotation Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x), initialTransform.translationComponent()\n          else\n            deltaTransform = Matrix.translation(p.subtract(startPosition))\n\n          if deltaTransform\n            activeItem.transform deltaTransform.concat initialTransform \n\n        \"touchend mouseup\": (event) ->\n          active = false\n\n          return\n\nHelpers\n-------\n\n    localPosition = (event) ->\n      Point event.pageX, event.pageY\n",
+      "content": "Highway through the Dragger Zone\n================================\n\n    Matrix = require \"matrix\"\n    Point = require \"point\"\n\n    debugPoint = document.createElement \"div\"\n    debugPoint.className = \"point\"\n    document.body.appendChild debugPoint\n\n    Actions = require \"../hotkey_actions\"\n\n    module.exports = ($element, editor) ->\n      active = false\n      activeItem = null\n      activeView = null\n      anchor = null\n      startPosition = null\n      initialTransform = null\n      lastCommand = null\n      center = null\n      scaling = null\n      rotating = null\n\n      Actions ->\n        items: editor.items\n        item: activeItem\n        view: activeView\n        editor: editor\n\n      $element.bind\n        \"touchstart mousedown\": (event) ->\n          $target = $(target = event.target)\n          if $target.is \"img\"\n            event.preventDefault()\n\n            active = true\n            activeView = target\n            index = $(\".items img\").index(target)\n            activeItem = editor.items.get index\n            initialTransform = activeItem.transform()\n            center = activeItem.center()\n            anchor = activeItem.anchor()\n\n            lastCommand = editor.Command.Transform\n              index: index\n              transform: initialTransform\n              previous: initialTransform\n            \n            editor.execute lastCommand\n\n            $(debugPoint).css\n              top: center.y\n              left: center.x\n\n            scaling = false\n            rotating = false\n\n            if event.shiftKey\n              scaling = true\n            else if event.ctrlKey or event.metaKey\n              rotating = true\n\n            startPosition = localPosition(event)\n\n          return\n\n        \"touchmove mousemove\": (event) ->\n          return unless active\n          p = localPosition(event)\n\n          # TODO: Need to use more generalized transform concatenation to allow\n          # scale and rotation to occur independently\n\n          if scaling\n            initialVec = startPosition.subtract center\n            currentVec = p.subtract center\n            deltaTransform = Matrix.scale currentVec.x / initialVec.x, currentVec.y / initialVec.y, initialTransform.translationComponent()\n          else if rotating\n            vec = p.subtract center\n            initialVec = startPosition.subtract center\n            deltaTransform = Matrix.rotation Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x), initialTransform.translationComponent()\n          else\n            deltaTransform = Matrix.translation(p.subtract(startPosition))\n\n          if deltaTransform\n            lastCommand.set deltaTransform.concat initialTransform\n\n        \"touchend mouseup\": (event) ->\n          active = false\n\n          return\n\nHelpers\n-------\n\n    localPosition = (event) ->\n      Point event.pageX, event.pageY\n",
       "mode": "100644",
       "type": "blob"
     },
@@ -80,7 +80,7 @@ window["distri/chopper:commands"]({
     },
     "pixie.cson": {
       "path": "pixie.cson",
-      "content": "version: \"0.1.0\"\nremoteDependencies: [\n  \"https://code.jquery.com/jquery-1.11.0.min.js\"\n]\ndependencies:\n  composition: \"distri/compositions:v0.1.1\"\n  \"jquery-hotkeys\": \"distri/jquery-hotkeys:v0.9.2\"\n  matrix: \"distri/matrix:v0.3.1\"\n  observable: \"distri/observable:v0.1.1\"\n  point: \"distri/point:v0.2.0\"\n  util: \"distri/util:v0.1.0\"\n",
+      "content": "version: \"0.1.0\"\nremoteDependencies: [\n  \"https://code.jquery.com/jquery-1.11.0.min.js\"\n]\ndependencies:\n  composition: \"distri/compositions:v0.1.1\"\n  \"jquery-hotkeys\": \"distri/jquery-hotkeys:v0.9.2\"\n  matrix: \"distri/matrix:v0.3.1\"\n  observable: \"distri/observable:v0.1.1\"\n  point: \"distri/point:v0.2.0\"\n  undo: \"distri/undo:v0.2.0\"\n  util: \"distri/util:v0.1.0\"\n",
       "mode": "100644",
       "type": "blob"
     },
@@ -119,12 +119,17 @@ window["distri/chopper:commands"]({
       "content": ".items\n  - each @items, (item) ->\n    %img(src=item.src style=item.css)\n",
       "mode": "100644",
       "type": "blob"
+    },
+    "TODO.md": {
+      "path": "TODO.md",
+      "content": "TODO\n====\n\nViewport Size\n",
+      "mode": "100644"
     }
   },
   "distribution": {
     "command": {
       "path": "command",
-      "content": "(function() {\n  var Command;\n\n  Command = require(\"./lib/command\");\n\n  module.exports = function(I, self) {\n    var C;\n    if (I == null) {\n      I = {};\n    }\n    self.include(Command);\n    C = self.Command.register;\n    C(\"Transform\", function(data) {\n      if (data.previous == null) {\n        data.previous = self.items.get(data.index).transform();\n      }\n      return {\n        execute: function() {\n          return self.items.get(data.index).transform(data.transform());\n        },\n        undo: function() {\n          return self.items.get(data.index).transfrom(data.previous);\n        }\n      };\n    });\n    return C(\"Composite\", function(data) {\n      var commands;\n      if (data.commands) {\n        data.commands = data.commands.map(self.Command.parse);\n      } else {\n        data.commands = [];\n      }\n      commands = data.commands;\n      return {\n        execute: function() {\n          return commands.invoke(\"execute\");\n        },\n        undo: function() {\n          return commands.copy().reverse().invoke(\"undo\");\n        },\n        push: function(command, noExecute) {\n          commands.push(command);\n          if (!noExecute) {\n            return command.execute();\n          }\n        },\n        toJSON: function() {\n          return extend({}, data, {\n            commands: commands.invoke(\"toJSON\")\n          });\n        }\n      };\n    });\n  };\n\n}).call(this);\n",
+      "content": "(function() {\n  var Command;\n\n  Command = require(\"./lib/command\");\n\n  module.exports = function(I, self) {\n    var C;\n    if (I == null) {\n      I = {};\n    }\n    self.include(Command);\n    C = self.Command.register;\n    C(\"Transform\", function(data) {\n      if (data.previous == null) {\n        data.previous = self.items.get(data.index).transform();\n      }\n      return {\n        execute: function() {\n          return self.items.get(data.index).transform(data.transform);\n        },\n        undo: function() {\n          return self.items.get(data.index).transform(data.previous);\n        },\n        set: function(transform) {\n          data.transform = transform;\n          return this.execute();\n        }\n      };\n    });\n    return C(\"Composite\", function(data) {\n      var commands;\n      if (data.commands) {\n        data.commands = data.commands.map(self.Command.parse);\n      } else {\n        data.commands = [];\n      }\n      commands = data.commands;\n      return {\n        execute: function() {\n          return commands.invoke(\"execute\");\n        },\n        undo: function() {\n          return commands.copy().reverse().invoke(\"undo\");\n        },\n        push: function(command, noExecute) {\n          commands.push(command);\n          if (!noExecute) {\n            return command.execute();\n          }\n        },\n        toJSON: function() {\n          return extend({}, data, {\n            commands: commands.invoke(\"toJSON\")\n          });\n        }\n      };\n    });\n  };\n\n}).call(this);\n",
       "type": "blob"
     },
     "duct_tape": {
@@ -134,12 +139,12 @@ window["distri/chopper:commands"]({
     },
     "editor": {
       "path": "editor",
-      "content": "(function() {\n  var Command, Composition, Item;\n\n  Item = require(\"./item\");\n\n  Composition = require(\"composition\");\n\n  Command = require(\"./command\");\n\n  module.exports = function(I) {\n    var self;\n    if (I == null) {\n      I = {};\n    }\n    self = Composition(I);\n    self.include(Command);\n    self.extend({\n      items: Observable([]),\n      load: function(data) {\n        return self.items(data.map(Item));\n      }\n    });\n    return self;\n  };\n\n}).call(this);\n",
+      "content": "(function() {\n  var Command, Composition, Item, Undo;\n\n  Item = require(\"./item\");\n\n  Composition = require(\"composition\");\n\n  Command = require(\"./command\");\n\n  Undo = require(\"undo\");\n\n  module.exports = function(I) {\n    var self;\n    if (I == null) {\n      I = {};\n    }\n    self = Composition(I);\n    self.include(Command, Undo);\n    self.extend({\n      items: Observable([]),\n      load: function(data) {\n        return self.items(data.map(Item));\n      }\n    });\n    return self;\n  };\n\n}).call(this);\n",
       "type": "blob"
     },
     "hotkey_actions": {
       "path": "hotkey_actions",
-      "content": "(function() {\n  var Actions, Item, Point, actions, bindings, objectToArray;\n\n  require(\"jquery-hotkeys\");\n\n  Item = require(\"./item\");\n\n  Point = require(\"point\");\n\n  module.exports = Actions = function(state) {\n    return Object.keys(bindings).forEach(function(hotkey) {\n      return $(document).on(\"keydown\", null, hotkey, function(event) {\n        event.preventDefault();\n        return actions[bindings[hotkey]](state());\n      });\n    });\n  };\n\n  Actions.hotkeys = function() {\n    return objectToArray(bindings);\n  };\n\n  bindings = {\n    f1: \"displayHelp\",\n    pageup: \"raiseToTop\",\n    del: \"delete\",\n    \"return\": \"duplicate\",\n    \"ctrl+s\": \"save\"\n  };\n\n  actions = {\n    displayHelp: function() {\n      return $(\".help\").toggleClass(\"up\");\n    },\n    raiseToTop: function(_arg) {\n      var item, items, view;\n      item = _arg.item, view = _arg.view, items = _arg.items;\n      return items.push(items.remove(item));\n    },\n    \"delete\": function(_arg) {\n      var item, items, view;\n      item = _arg.item, view = _arg.view, items = _arg.items;\n      return items.remove(item);\n    },\n    duplicate: function(_arg) {\n      var item, items, newItem, view;\n      item = _arg.item, view = _arg.view, items = _arg.items;\n      newItem = Item(item.copy());\n      newItem.position(newItem.position().add(Point(20, 20)));\n      return items.push(newItem);\n    },\n    save: function() {\n      var data;\n      data = appData();\n      console.log(data, data.length);\n      return location.hash = data;\n    }\n  };\n\n  objectToArray = function(object) {\n    return Object.keys(object).map(function(key) {\n      return [key, object[key]];\n    });\n  };\n\n}).call(this);\n",
+      "content": "(function() {\n  var Actions, Item, Point, actions, bindings, objectToArray;\n\n  require(\"jquery-hotkeys\");\n\n  Item = require(\"./item\");\n\n  Point = require(\"point\");\n\n  module.exports = Actions = function(state) {\n    return Object.keys(bindings).forEach(function(hotkey) {\n      return $(document).on(\"keydown\", null, hotkey, function(event) {\n        event.preventDefault();\n        return actions[bindings[hotkey]](state());\n      });\n    });\n  };\n\n  Actions.hotkeys = function() {\n    return objectToArray(bindings);\n  };\n\n  bindings = {\n    f1: \"displayHelp\",\n    pageup: \"raiseToTop\",\n    del: \"delete\",\n    \"return\": \"duplicate\",\n    \"ctrl+s\": \"save\",\n    \"ctrl+z\": \"undo\",\n    \"ctrl+y\": \"redo\"\n  };\n\n  actions = {\n    displayHelp: function() {\n      return $(\".help\").toggleClass(\"up\");\n    },\n    raiseToTop: function(_arg) {\n      var item, items, view;\n      item = _arg.item, view = _arg.view, items = _arg.items;\n      return items.push(items.remove(item));\n    },\n    \"delete\": function(_arg) {\n      var item, items, view;\n      item = _arg.item, view = _arg.view, items = _arg.items;\n      return items.remove(item);\n    },\n    duplicate: function(_arg) {\n      var item, items, newItem, view;\n      item = _arg.item, view = _arg.view, items = _arg.items;\n      newItem = Item(item.copy());\n      newItem.position(newItem.position().add(Point(20, 20)));\n      return items.push(newItem);\n    },\n    undo: function(_arg) {\n      var editor;\n      editor = _arg.editor;\n      return editor.undo();\n    },\n    redo: function(_arg) {\n      var editor;\n      editor = _arg.editor;\n      return editor.redo();\n    },\n    save: function() {\n      var data;\n      data = appData();\n      console.log(data, data.length);\n      return location.hash = data;\n    }\n  };\n\n  objectToArray = function(object) {\n    return Object.keys(object).map(function(key) {\n      return [key, object[key]];\n    });\n  };\n\n}).call(this);\n",
       "type": "blob"
     },
     "item": {
@@ -154,7 +159,7 @@ window["distri/chopper:commands"]({
     },
     "lib/dragzone": {
       "path": "lib/dragzone",
-      "content": "(function() {\n  var Actions, Matrix, Point, debugPoint, localPosition;\n\n  Matrix = require(\"matrix\");\n\n  Point = require(\"point\");\n\n  debugPoint = document.createElement(\"div\");\n\n  debugPoint.className = \"point\";\n\n  document.body.appendChild(debugPoint);\n\n  Actions = require(\"../hotkey_actions\");\n\n  module.exports = function($element, editor) {\n    var active, activeItem, activeView, anchor, center, initialTransform, rotating, scaling, startPosition;\n    active = false;\n    activeItem = null;\n    activeView = null;\n    anchor = null;\n    startPosition = null;\n    initialTransform = null;\n    center = null;\n    scaling = null;\n    rotating = null;\n    Actions(function() {\n      return {\n        items: editor.items,\n        item: activeItem,\n        view: activeView\n      };\n    });\n    return $element.bind({\n      \"touchstart mousedown\": function(event) {\n        var $target, target;\n        $target = $(target = event.target);\n        if ($target.is(\"img\")) {\n          event.preventDefault();\n          active = true;\n          activeView = target;\n          activeItem = editor.items.get($(\".items img\").index(target));\n          initialTransform = activeItem.transform();\n          center = activeItem.center();\n          anchor = activeItem.anchor();\n          console.log(anchor);\n          $(debugPoint).css({\n            top: center.y,\n            left: center.x\n          });\n          scaling = false;\n          rotating = false;\n          if (event.shiftKey) {\n            scaling = true;\n          } else if (event.ctrlKey || event.metaKey) {\n            rotating = true;\n          }\n          startPosition = localPosition(event);\n        }\n      },\n      \"touchmove mousemove\": function(event) {\n        var currentVec, deltaTransform, initialVec, p, vec;\n        if (!active) {\n          return;\n        }\n        p = localPosition(event);\n        if (scaling) {\n          initialVec = startPosition.subtract(center);\n          currentVec = p.subtract(center);\n          deltaTransform = Matrix.scale(currentVec.x / initialVec.x, currentVec.y / initialVec.y, initialTransform.translationComponent());\n        } else if (rotating) {\n          vec = p.subtract(center);\n          initialVec = startPosition.subtract(center);\n          deltaTransform = Matrix.rotation(Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x), initialTransform.translationComponent());\n        } else {\n          deltaTransform = Matrix.translation(p.subtract(startPosition));\n        }\n        if (deltaTransform) {\n          return activeItem.transform(deltaTransform.concat(initialTransform));\n        }\n      },\n      \"touchend mouseup\": function(event) {\n        active = false;\n      }\n    });\n  };\n\n  localPosition = function(event) {\n    return Point(event.pageX, event.pageY);\n  };\n\n}).call(this);\n",
+      "content": "(function() {\n  var Actions, Matrix, Point, debugPoint, localPosition;\n\n  Matrix = require(\"matrix\");\n\n  Point = require(\"point\");\n\n  debugPoint = document.createElement(\"div\");\n\n  debugPoint.className = \"point\";\n\n  document.body.appendChild(debugPoint);\n\n  Actions = require(\"../hotkey_actions\");\n\n  module.exports = function($element, editor) {\n    var active, activeItem, activeView, anchor, center, initialTransform, lastCommand, rotating, scaling, startPosition;\n    active = false;\n    activeItem = null;\n    activeView = null;\n    anchor = null;\n    startPosition = null;\n    initialTransform = null;\n    lastCommand = null;\n    center = null;\n    scaling = null;\n    rotating = null;\n    Actions(function() {\n      return {\n        items: editor.items,\n        item: activeItem,\n        view: activeView,\n        editor: editor\n      };\n    });\n    return $element.bind({\n      \"touchstart mousedown\": function(event) {\n        var $target, index, target;\n        $target = $(target = event.target);\n        if ($target.is(\"img\")) {\n          event.preventDefault();\n          active = true;\n          activeView = target;\n          index = $(\".items img\").index(target);\n          activeItem = editor.items.get(index);\n          initialTransform = activeItem.transform();\n          center = activeItem.center();\n          anchor = activeItem.anchor();\n          lastCommand = editor.Command.Transform({\n            index: index,\n            transform: initialTransform,\n            previous: initialTransform\n          });\n          editor.execute(lastCommand);\n          $(debugPoint).css({\n            top: center.y,\n            left: center.x\n          });\n          scaling = false;\n          rotating = false;\n          if (event.shiftKey) {\n            scaling = true;\n          } else if (event.ctrlKey || event.metaKey) {\n            rotating = true;\n          }\n          startPosition = localPosition(event);\n        }\n      },\n      \"touchmove mousemove\": function(event) {\n        var currentVec, deltaTransform, initialVec, p, vec;\n        if (!active) {\n          return;\n        }\n        p = localPosition(event);\n        if (scaling) {\n          initialVec = startPosition.subtract(center);\n          currentVec = p.subtract(center);\n          deltaTransform = Matrix.scale(currentVec.x / initialVec.x, currentVec.y / initialVec.y, initialTransform.translationComponent());\n        } else if (rotating) {\n          vec = p.subtract(center);\n          initialVec = startPosition.subtract(center);\n          deltaTransform = Matrix.rotation(Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x), initialTransform.translationComponent());\n        } else {\n          deltaTransform = Matrix.translation(p.subtract(startPosition));\n        }\n        if (deltaTransform) {\n          return lastCommand.set(deltaTransform.concat(initialTransform));\n        }\n      },\n      \"touchend mouseup\": function(event) {\n        active = false;\n      }\n    });\n  };\n\n  localPosition = function(event) {\n    return Point(event.pageX, event.pageY);\n  };\n\n}).call(this);\n",
       "type": "blob"
     },
     "lib/drop": {
@@ -179,7 +184,7 @@ window["distri/chopper:commands"]({
     },
     "pixie": {
       "path": "pixie",
-      "content": "module.exports = {\"version\":\"0.1.0\",\"remoteDependencies\":[\"https://code.jquery.com/jquery-1.11.0.min.js\"],\"dependencies\":{\"composition\":\"distri/compositions:v0.1.1\",\"jquery-hotkeys\":\"distri/jquery-hotkeys:v0.9.2\",\"matrix\":\"distri/matrix:v0.3.1\",\"observable\":\"distri/observable:v0.1.1\",\"point\":\"distri/point:v0.2.0\",\"util\":\"distri/util:v0.1.0\"}};",
+      "content": "module.exports = {\"version\":\"0.1.0\",\"remoteDependencies\":[\"https://code.jquery.com/jquery-1.11.0.min.js\"],\"dependencies\":{\"composition\":\"distri/compositions:v0.1.1\",\"jquery-hotkeys\":\"distri/jquery-hotkeys:v0.9.2\",\"matrix\":\"distri/matrix:v0.3.1\",\"observable\":\"distri/observable:v0.1.1\",\"point\":\"distri/point:v0.2.0\",\"undo\":\"distri/undo:v0.2.0\",\"util\":\"distri/util:v0.1.0\"}};",
       "type": "blob"
     },
     "s3load": {
@@ -1460,6 +1465,353 @@ window["distri/chopper:commands"]({
         "defaultBranch": "master"
       },
       "dependencies": {}
+    },
+    "undo": {
+      "source": {
+        "LICENSE": {
+          "path": "LICENSE",
+          "mode": "100644",
+          "content": "The MIT License (MIT)\n\nCopyright (c) 2013 distri\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of\nthis software and associated documentation files (the \"Software\"), to deal in\nthe Software without restriction, including without limitation the rights to\nuse, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of\nthe Software, and to permit persons to whom the Software is furnished to do so,\nsubject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS\nFOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR\nCOPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER\nIN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN\nCONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n",
+          "type": "blob"
+        },
+        "README.md": {
+          "path": "README.md",
+          "mode": "100644",
+          "content": "undo\n====\n\nUndo module for editors.\n",
+          "type": "blob"
+        },
+        "main.coffee.md": {
+          "path": "main.coffee.md",
+          "mode": "100644",
+          "content": "Undo\n====\n\nAn editor module for editors that support undo/redo\n\n    CommandStack = require \"command-stack\"\n\n    module.exports = (I={}, self=Core(I)) ->\n      commandStack = CommandStack()\n\n      self.extend\n        history: (newHistory=[]) ->\n          if arguments.length > 0\n            commandStack = CommandStack newHistory\n          else\n            commandStack.stack()\n\n        execute: (command) ->\n          commandStack.execute command\n\n          return self\n\n        undo: ->\n          commandStack.undo()\n\n          return self\n\n        redo: ->\n          commandStack.redo()\n\n          return self\n\n      return self\n",
+          "type": "blob"
+        },
+        "pixie.cson": {
+          "path": "pixie.cson",
+          "mode": "100644",
+          "content": "version: \"0.2.0\"\nremoteDependencies: [\n  \"http://strd6.github.io/tempest/javascripts/envweb-v0.4.7.js\"\n]\ndependencies:\n  \"command-stack\": \"distri/command-stack:v0.11.0\"\n",
+          "type": "blob"
+        },
+        "test/undo.coffee": {
+          "path": "test/undo.coffee",
+          "mode": "100644",
+          "content": "Undo = require \"../main\"\n\ndescribe \"undo\", ->\n  it \"should undo\", ->\n    undo = Undo()\n    \n    undo.execute\n      execute: ->\n        console.log \"execute\"\n      undo: ->\n        console.log \"undo\"\n    \n    undo.undo()\n",
+          "type": "blob"
+        }
+      },
+      "distribution": {
+        "main": {
+          "path": "main",
+          "content": "(function() {\n  var CommandStack;\n\n  CommandStack = require(\"command-stack\");\n\n  module.exports = function(I, self) {\n    var commandStack;\n    if (I == null) {\n      I = {};\n    }\n    if (self == null) {\n      self = Core(I);\n    }\n    commandStack = CommandStack();\n    self.extend({\n      history: function(newHistory) {\n        if (newHistory == null) {\n          newHistory = [];\n        }\n        if (arguments.length > 0) {\n          return commandStack = CommandStack(newHistory);\n        } else {\n          return commandStack.stack();\n        }\n      },\n      execute: function(command) {\n        commandStack.execute(command);\n        return self;\n      },\n      undo: function() {\n        commandStack.undo();\n        return self;\n      },\n      redo: function() {\n        commandStack.redo();\n        return self;\n      }\n    });\n    return self;\n  };\n\n}).call(this);\n\n//# sourceURL=main.coffee",
+          "type": "blob"
+        },
+        "pixie": {
+          "path": "pixie",
+          "content": "module.exports = {\"version\":\"0.2.0\",\"remoteDependencies\":[\"http://strd6.github.io/tempest/javascripts/envweb-v0.4.7.js\"],\"dependencies\":{\"command-stack\":\"distri/command-stack:v0.11.0\"}};",
+          "type": "blob"
+        },
+        "test/undo": {
+          "path": "test/undo",
+          "content": "(function() {\n  var Undo;\n\n  Undo = require(\"../main\");\n\n  describe(\"undo\", function() {\n    return it(\"should undo\", function() {\n      var undo;\n      undo = Undo();\n      undo.execute({\n        execute: function() {\n          return console.log(\"execute\");\n        },\n        undo: function() {\n          return console.log(\"undo\");\n        }\n      });\n      return undo.undo();\n    });\n  });\n\n}).call(this);\n\n//# sourceURL=test/undo.coffee",
+          "type": "blob"
+        }
+      },
+      "progenitor": {
+        "url": "http://strd6.github.io/editor/"
+      },
+      "version": "0.2.0",
+      "entryPoint": "main",
+      "remoteDependencies": [
+        "http://strd6.github.io/tempest/javascripts/envweb-v0.4.7.js"
+      ],
+      "repository": {
+        "id": 14673255,
+        "name": "undo",
+        "full_name": "distri/undo",
+        "owner": {
+          "login": "distri",
+          "id": 6005125,
+          "avatar_url": "https://identicons.github.com/f90c81ffc1498e260c820082f2e7ca5f.png",
+          "gravatar_id": null,
+          "url": "https://api.github.com/users/distri",
+          "html_url": "https://github.com/distri",
+          "followers_url": "https://api.github.com/users/distri/followers",
+          "following_url": "https://api.github.com/users/distri/following{/other_user}",
+          "gists_url": "https://api.github.com/users/distri/gists{/gist_id}",
+          "starred_url": "https://api.github.com/users/distri/starred{/owner}{/repo}",
+          "subscriptions_url": "https://api.github.com/users/distri/subscriptions",
+          "organizations_url": "https://api.github.com/users/distri/orgs",
+          "repos_url": "https://api.github.com/users/distri/repos",
+          "events_url": "https://api.github.com/users/distri/events{/privacy}",
+          "received_events_url": "https://api.github.com/users/distri/received_events",
+          "type": "Organization",
+          "site_admin": false
+        },
+        "private": false,
+        "html_url": "https://github.com/distri/undo",
+        "description": "Undo module for editors.",
+        "fork": false,
+        "url": "https://api.github.com/repos/distri/undo",
+        "forks_url": "https://api.github.com/repos/distri/undo/forks",
+        "keys_url": "https://api.github.com/repos/distri/undo/keys{/key_id}",
+        "collaborators_url": "https://api.github.com/repos/distri/undo/collaborators{/collaborator}",
+        "teams_url": "https://api.github.com/repos/distri/undo/teams",
+        "hooks_url": "https://api.github.com/repos/distri/undo/hooks",
+        "issue_events_url": "https://api.github.com/repos/distri/undo/issues/events{/number}",
+        "events_url": "https://api.github.com/repos/distri/undo/events",
+        "assignees_url": "https://api.github.com/repos/distri/undo/assignees{/user}",
+        "branches_url": "https://api.github.com/repos/distri/undo/branches{/branch}",
+        "tags_url": "https://api.github.com/repos/distri/undo/tags",
+        "blobs_url": "https://api.github.com/repos/distri/undo/git/blobs{/sha}",
+        "git_tags_url": "https://api.github.com/repos/distri/undo/git/tags{/sha}",
+        "git_refs_url": "https://api.github.com/repos/distri/undo/git/refs{/sha}",
+        "trees_url": "https://api.github.com/repos/distri/undo/git/trees{/sha}",
+        "statuses_url": "https://api.github.com/repos/distri/undo/statuses/{sha}",
+        "languages_url": "https://api.github.com/repos/distri/undo/languages",
+        "stargazers_url": "https://api.github.com/repos/distri/undo/stargazers",
+        "contributors_url": "https://api.github.com/repos/distri/undo/contributors",
+        "subscribers_url": "https://api.github.com/repos/distri/undo/subscribers",
+        "subscription_url": "https://api.github.com/repos/distri/undo/subscription",
+        "commits_url": "https://api.github.com/repos/distri/undo/commits{/sha}",
+        "git_commits_url": "https://api.github.com/repos/distri/undo/git/commits{/sha}",
+        "comments_url": "https://api.github.com/repos/distri/undo/comments{/number}",
+        "issue_comment_url": "https://api.github.com/repos/distri/undo/issues/comments/{number}",
+        "contents_url": "https://api.github.com/repos/distri/undo/contents/{+path}",
+        "compare_url": "https://api.github.com/repos/distri/undo/compare/{base}...{head}",
+        "merges_url": "https://api.github.com/repos/distri/undo/merges",
+        "archive_url": "https://api.github.com/repos/distri/undo/{archive_format}{/ref}",
+        "downloads_url": "https://api.github.com/repos/distri/undo/downloads",
+        "issues_url": "https://api.github.com/repos/distri/undo/issues{/number}",
+        "pulls_url": "https://api.github.com/repos/distri/undo/pulls{/number}",
+        "milestones_url": "https://api.github.com/repos/distri/undo/milestones{/number}",
+        "notifications_url": "https://api.github.com/repos/distri/undo/notifications{?since,all,participating}",
+        "labels_url": "https://api.github.com/repos/distri/undo/labels{/name}",
+        "releases_url": "https://api.github.com/repos/distri/undo/releases{/id}",
+        "created_at": "2013-11-25T01:31:38Z",
+        "updated_at": "2013-11-25T01:40:59Z",
+        "pushed_at": "2013-11-25T01:40:58Z",
+        "git_url": "git://github.com/distri/undo.git",
+        "ssh_url": "git@github.com:distri/undo.git",
+        "clone_url": "https://github.com/distri/undo.git",
+        "svn_url": "https://github.com/distri/undo",
+        "homepage": null,
+        "size": 336,
+        "stargazers_count": 0,
+        "watchers_count": 0,
+        "language": "CoffeeScript",
+        "has_issues": true,
+        "has_downloads": true,
+        "has_wiki": true,
+        "forks_count": 0,
+        "mirror_url": null,
+        "open_issues_count": 0,
+        "forks": 0,
+        "open_issues": 0,
+        "watchers": 0,
+        "default_branch": "master",
+        "master_branch": "master",
+        "permissions": {
+          "admin": true,
+          "push": true,
+          "pull": true
+        },
+        "organization": {
+          "login": "distri",
+          "id": 6005125,
+          "avatar_url": "https://identicons.github.com/f90c81ffc1498e260c820082f2e7ca5f.png",
+          "gravatar_id": null,
+          "url": "https://api.github.com/users/distri",
+          "html_url": "https://github.com/distri",
+          "followers_url": "https://api.github.com/users/distri/followers",
+          "following_url": "https://api.github.com/users/distri/following{/other_user}",
+          "gists_url": "https://api.github.com/users/distri/gists{/gist_id}",
+          "starred_url": "https://api.github.com/users/distri/starred{/owner}{/repo}",
+          "subscriptions_url": "https://api.github.com/users/distri/subscriptions",
+          "organizations_url": "https://api.github.com/users/distri/orgs",
+          "repos_url": "https://api.github.com/users/distri/repos",
+          "events_url": "https://api.github.com/users/distri/events{/privacy}",
+          "received_events_url": "https://api.github.com/users/distri/received_events",
+          "type": "Organization",
+          "site_admin": false
+        },
+        "network_count": 0,
+        "subscribers_count": 2,
+        "branch": "v0.2.0",
+        "defaultBranch": "master"
+      },
+      "dependencies": {
+        "command-stack": {
+          "source": {
+            "main.coffee.md": {
+              "path": "main.coffee.md",
+              "mode": "100644",
+              "content": "Command Stack\n-------------\n\nA simple stack based implementation of executable and undoable commands.\n\n    CommandStack = (stack=[]) ->\n      index = stack.length\n\n      execute: (command) ->\n        stack[index] = command\n        command.execute()\n\n        index += 1\n\n        # Be sure to blast obsolete redos\n        stack.length = index\n\n        return this\n\n      undo: ->\n        if @canUndo()\n          index -= 1\n\n          command = stack[index]\n          command.undo()\n\n          return command\n\n      redo: ->\n        if @canRedo()\n          command = stack[index]\n          command.execute()\n\n          index += 1\n\n          return command\n\n      current: ->\n        stack[index-1]\n\n      canUndo: ->\n        index > 0\n\n      canRedo: ->\n        stack[index]?\n\n      stack: ->\n        stack.slice(0, index)\n\n    module.exports = CommandStack\n\nTODO\n----\n\nIntegrate Observables\n",
+              "type": "blob"
+            },
+            "package.json": {
+              "path": "package.json",
+              "mode": "100644",
+              "content": "{\n  \"name\": \"commando\",\n  \"version\": \"0.9.0\",\n  \"description\": \"Simple Command Pattern\",\n  \"devDependencies\": {\n    \"coffee-script\": \"~1.6.3\",\n    \"mocha\": \"~1.12.0\",\n    \"uglify-js\": \"~2.3.6\"\n  },\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"https://github.com/STRd6/commando.git\"\n  },\n  \"files\": [\n    \"dist\"\n  ],\n  \"main\": \"dist/commando.js\"\n}\n",
+              "type": "blob"
+            },
+            "pixie.cson": {
+              "path": "pixie.cson",
+              "mode": "100644",
+              "content": "version: \"0.11.0\"\n",
+              "type": "blob"
+            },
+            "test/command_stack.coffee": {
+              "path": "test/command_stack.coffee",
+              "mode": "100644",
+              "content": "CommandStack = require \"../main\"\n\nok = assert\nequals = assert.equal\n\ndescribe \"CommandStack\", ->\n  it \"undo on an empty stack returns undefined\", ->\n    commandStack = CommandStack()\n  \n    equals commandStack.undo(), undefined\n  \n  it \"redo on an empty stack returns undefined\", ->\n    commandStack = CommandStack()\n  \n    equals commandStack.redo(), undefined\n  \n  it \"executes commands\", ->\n    command =\n      execute: ->\n        ok true, \"command executed\"\n  \n    commandStack = CommandStack()\n  \n    commandStack.execute command\n  \n  it \"can undo\", ->\n    command =\n      execute: ->\n      undo: ->\n        ok true, \"command executed\"\n  \n    commandStack = CommandStack()\n    commandStack.execute command\n  \n    commandStack.undo()\n  \n  it \"can redo\", ->\n    command =\n      execute: ->\n        ok true, \"command executed\"\n      undo: ->\n  \n    commandStack = CommandStack()\n    commandStack.execute command\n  \n    commandStack.undo()\n    commandStack.redo()\n  \n  it \"executes redone command once on redo\", ->\n    command =\n      execute: ->\n        ok true, \"command executed\"\n      undo: ->\n  \n    commandStack = CommandStack()\n    commandStack.execute command\n  \n    commandStack.undo()\n    commandStack.redo()\n  \n    equals commandStack.redo(), undefined\n    equals commandStack.redo(), undefined\n  \n  it \"command is returned when undone\", ->\n    command =\n      execute: ->\n      undo: ->\n  \n    commandStack = CommandStack()\n    commandStack.execute command\n  \n    equals commandStack.undo(), command, \"Undone command is returned\"\n  \n  it \"command is returned when redone\", ->\n    command =\n      execute: ->\n      undo: ->\n  \n    commandStack = CommandStack()\n    commandStack.execute command\n    commandStack.undo()\n  \n    equals commandStack.redo(), command, \"Redone command is returned\"\n  \n  it \"cannot redo an obsolete future\", ->\n    Command = ->\n      execute: ->\n      undo: ->\n  \n    commandStack = CommandStack()\n    commandStack.execute Command()\n    commandStack.execute Command()\n  \n    commandStack.undo()\n    commandStack.undo()\n  \n    equals commandStack.canRedo(), true\n  \n    commandStack.execute Command()\n  \n    equals commandStack.canRedo(), false\n",
+              "type": "blob"
+            }
+          },
+          "distribution": {
+            "main": {
+              "path": "main",
+              "content": "(function() {\n  var CommandStack;\n\n  CommandStack = function(stack) {\n    var index;\n    if (stack == null) {\n      stack = [];\n    }\n    index = stack.length;\n    return {\n      execute: function(command) {\n        stack[index] = command;\n        command.execute();\n        index += 1;\n        stack.length = index;\n        return this;\n      },\n      undo: function() {\n        var command;\n        if (this.canUndo()) {\n          index -= 1;\n          command = stack[index];\n          command.undo();\n          return command;\n        }\n      },\n      redo: function() {\n        var command;\n        if (this.canRedo()) {\n          command = stack[index];\n          command.execute();\n          index += 1;\n          return command;\n        }\n      },\n      current: function() {\n        return stack[index - 1];\n      },\n      canUndo: function() {\n        return index > 0;\n      },\n      canRedo: function() {\n        return stack[index] != null;\n      },\n      stack: function() {\n        return stack.slice(0, index);\n      }\n    };\n  };\n\n  module.exports = CommandStack;\n\n}).call(this);\n\n//# sourceURL=main.coffee",
+              "type": "blob"
+            },
+            "package": {
+              "path": "package",
+              "content": "module.exports = {\"name\":\"commando\",\"version\":\"0.9.0\",\"description\":\"Simple Command Pattern\",\"devDependencies\":{\"coffee-script\":\"~1.6.3\",\"mocha\":\"~1.12.0\",\"uglify-js\":\"~2.3.6\"},\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/STRd6/commando.git\"},\"files\":[\"dist\"],\"main\":\"dist/commando.js\"};",
+              "type": "blob"
+            },
+            "pixie": {
+              "path": "pixie",
+              "content": "module.exports = {\"version\":\"0.11.0\"};",
+              "type": "blob"
+            },
+            "test/command_stack": {
+              "path": "test/command_stack",
+              "content": "(function() {\n  var CommandStack, equals, ok;\n\n  CommandStack = require(\"../main\");\n\n  ok = assert;\n\n  equals = assert.equal;\n\n  describe(\"CommandStack\", function() {\n    it(\"undo on an empty stack returns undefined\", function() {\n      var commandStack;\n      commandStack = CommandStack();\n      return equals(commandStack.undo(), void 0);\n    });\n    it(\"redo on an empty stack returns undefined\", function() {\n      var commandStack;\n      commandStack = CommandStack();\n      return equals(commandStack.redo(), void 0);\n    });\n    it(\"executes commands\", function() {\n      var command, commandStack;\n      command = {\n        execute: function() {\n          return ok(true, \"command executed\");\n        }\n      };\n      commandStack = CommandStack();\n      return commandStack.execute(command);\n    });\n    it(\"can undo\", function() {\n      var command, commandStack;\n      command = {\n        execute: function() {},\n        undo: function() {\n          return ok(true, \"command executed\");\n        }\n      };\n      commandStack = CommandStack();\n      commandStack.execute(command);\n      return commandStack.undo();\n    });\n    it(\"can redo\", function() {\n      var command, commandStack;\n      command = {\n        execute: function() {\n          return ok(true, \"command executed\");\n        },\n        undo: function() {}\n      };\n      commandStack = CommandStack();\n      commandStack.execute(command);\n      commandStack.undo();\n      return commandStack.redo();\n    });\n    it(\"executes redone command once on redo\", function() {\n      var command, commandStack;\n      command = {\n        execute: function() {\n          return ok(true, \"command executed\");\n        },\n        undo: function() {}\n      };\n      commandStack = CommandStack();\n      commandStack.execute(command);\n      commandStack.undo();\n      commandStack.redo();\n      equals(commandStack.redo(), void 0);\n      return equals(commandStack.redo(), void 0);\n    });\n    it(\"command is returned when undone\", function() {\n      var command, commandStack;\n      command = {\n        execute: function() {},\n        undo: function() {}\n      };\n      commandStack = CommandStack();\n      commandStack.execute(command);\n      return equals(commandStack.undo(), command, \"Undone command is returned\");\n    });\n    it(\"command is returned when redone\", function() {\n      var command, commandStack;\n      command = {\n        execute: function() {},\n        undo: function() {}\n      };\n      commandStack = CommandStack();\n      commandStack.execute(command);\n      commandStack.undo();\n      return equals(commandStack.redo(), command, \"Redone command is returned\");\n    });\n    return it(\"cannot redo an obsolete future\", function() {\n      var Command, commandStack;\n      Command = function() {\n        return {\n          execute: function() {},\n          undo: function() {}\n        };\n      };\n      commandStack = CommandStack();\n      commandStack.execute(Command());\n      commandStack.execute(Command());\n      commandStack.undo();\n      commandStack.undo();\n      equals(commandStack.canRedo(), true);\n      commandStack.execute(Command());\n      return equals(commandStack.canRedo(), false);\n    });\n  });\n\n}).call(this);\n\n//# sourceURL=test/command_stack.coffee",
+              "type": "blob"
+            }
+          },
+          "progenitor": {
+            "url": "http://strd6.github.io/editor/"
+          },
+          "version": "0.11.0",
+          "entryPoint": "main",
+          "repository": {
+            "id": 11981428,
+            "name": "command-stack",
+            "full_name": "distri/command-stack",
+            "owner": {
+              "login": "distri",
+              "id": 6005125,
+              "avatar_url": "https://identicons.github.com/f90c81ffc1498e260c820082f2e7ca5f.png",
+              "gravatar_id": null,
+              "url": "https://api.github.com/users/distri",
+              "html_url": "https://github.com/distri",
+              "followers_url": "https://api.github.com/users/distri/followers",
+              "following_url": "https://api.github.com/users/distri/following{/other_user}",
+              "gists_url": "https://api.github.com/users/distri/gists{/gist_id}",
+              "starred_url": "https://api.github.com/users/distri/starred{/owner}{/repo}",
+              "subscriptions_url": "https://api.github.com/users/distri/subscriptions",
+              "organizations_url": "https://api.github.com/users/distri/orgs",
+              "repos_url": "https://api.github.com/users/distri/repos",
+              "events_url": "https://api.github.com/users/distri/events{/privacy}",
+              "received_events_url": "https://api.github.com/users/distri/received_events",
+              "type": "Organization",
+              "site_admin": false
+            },
+            "private": false,
+            "html_url": "https://github.com/distri/command-stack",
+            "description": "A stack for holding command objects.",
+            "fork": false,
+            "url": "https://api.github.com/repos/distri/command-stack",
+            "forks_url": "https://api.github.com/repos/distri/command-stack/forks",
+            "keys_url": "https://api.github.com/repos/distri/command-stack/keys{/key_id}",
+            "collaborators_url": "https://api.github.com/repos/distri/command-stack/collaborators{/collaborator}",
+            "teams_url": "https://api.github.com/repos/distri/command-stack/teams",
+            "hooks_url": "https://api.github.com/repos/distri/command-stack/hooks",
+            "issue_events_url": "https://api.github.com/repos/distri/command-stack/issues/events{/number}",
+            "events_url": "https://api.github.com/repos/distri/command-stack/events",
+            "assignees_url": "https://api.github.com/repos/distri/command-stack/assignees{/user}",
+            "branches_url": "https://api.github.com/repos/distri/command-stack/branches{/branch}",
+            "tags_url": "https://api.github.com/repos/distri/command-stack/tags",
+            "blobs_url": "https://api.github.com/repos/distri/command-stack/git/blobs{/sha}",
+            "git_tags_url": "https://api.github.com/repos/distri/command-stack/git/tags{/sha}",
+            "git_refs_url": "https://api.github.com/repos/distri/command-stack/git/refs{/sha}",
+            "trees_url": "https://api.github.com/repos/distri/command-stack/git/trees{/sha}",
+            "statuses_url": "https://api.github.com/repos/distri/command-stack/statuses/{sha}",
+            "languages_url": "https://api.github.com/repos/distri/command-stack/languages",
+            "stargazers_url": "https://api.github.com/repos/distri/command-stack/stargazers",
+            "contributors_url": "https://api.github.com/repos/distri/command-stack/contributors",
+            "subscribers_url": "https://api.github.com/repos/distri/command-stack/subscribers",
+            "subscription_url": "https://api.github.com/repos/distri/command-stack/subscription",
+            "commits_url": "https://api.github.com/repos/distri/command-stack/commits{/sha}",
+            "git_commits_url": "https://api.github.com/repos/distri/command-stack/git/commits{/sha}",
+            "comments_url": "https://api.github.com/repos/distri/command-stack/comments{/number}",
+            "issue_comment_url": "https://api.github.com/repos/distri/command-stack/issues/comments/{number}",
+            "contents_url": "https://api.github.com/repos/distri/command-stack/contents/{+path}",
+            "compare_url": "https://api.github.com/repos/distri/command-stack/compare/{base}...{head}",
+            "merges_url": "https://api.github.com/repos/distri/command-stack/merges",
+            "archive_url": "https://api.github.com/repos/distri/command-stack/{archive_format}{/ref}",
+            "downloads_url": "https://api.github.com/repos/distri/command-stack/downloads",
+            "issues_url": "https://api.github.com/repos/distri/command-stack/issues{/number}",
+            "pulls_url": "https://api.github.com/repos/distri/command-stack/pulls{/number}",
+            "milestones_url": "https://api.github.com/repos/distri/command-stack/milestones{/number}",
+            "notifications_url": "https://api.github.com/repos/distri/command-stack/notifications{?since,all,participating}",
+            "labels_url": "https://api.github.com/repos/distri/command-stack/labels{/name}",
+            "releases_url": "https://api.github.com/repos/distri/command-stack/releases{/id}",
+            "created_at": "2013-08-08T16:51:40Z",
+            "updated_at": "2013-11-25T00:40:55Z",
+            "pushed_at": "2013-11-25T00:40:53Z",
+            "git_url": "git://github.com/distri/command-stack.git",
+            "ssh_url": "git@github.com:distri/command-stack.git",
+            "clone_url": "https://github.com/distri/command-stack.git",
+            "svn_url": "https://github.com/distri/command-stack",
+            "homepage": "",
+            "size": 664,
+            "stargazers_count": 0,
+            "watchers_count": 0,
+            "language": "CoffeeScript",
+            "has_issues": true,
+            "has_downloads": true,
+            "has_wiki": true,
+            "forks_count": 0,
+            "mirror_url": null,
+            "open_issues_count": 0,
+            "forks": 0,
+            "open_issues": 0,
+            "watchers": 0,
+            "default_branch": "master",
+            "master_branch": "master",
+            "permissions": {
+              "admin": true,
+              "push": true,
+              "pull": true
+            },
+            "organization": {
+              "login": "distri",
+              "id": 6005125,
+              "avatar_url": "https://identicons.github.com/f90c81ffc1498e260c820082f2e7ca5f.png",
+              "gravatar_id": null,
+              "url": "https://api.github.com/users/distri",
+              "html_url": "https://github.com/distri",
+              "followers_url": "https://api.github.com/users/distri/followers",
+              "following_url": "https://api.github.com/users/distri/following{/other_user}",
+              "gists_url": "https://api.github.com/users/distri/gists{/gist_id}",
+              "starred_url": "https://api.github.com/users/distri/starred{/owner}{/repo}",
+              "subscriptions_url": "https://api.github.com/users/distri/subscriptions",
+              "organizations_url": "https://api.github.com/users/distri/orgs",
+              "repos_url": "https://api.github.com/users/distri/repos",
+              "events_url": "https://api.github.com/users/distri/events{/privacy}",
+              "received_events_url": "https://api.github.com/users/distri/received_events",
+              "type": "Organization",
+              "site_admin": false
+            },
+            "network_count": 0,
+            "subscribers_count": 1,
+            "branch": "v0.11.0",
+            "defaultBranch": "master"
+          },
+          "dependencies": {}
+        }
+      }
     },
     "util": {
       "source": {

@@ -39,17 +39,20 @@
 Composition = require <span class="string">"composition"</span>
 
 Command = require <span class="string">"./command"</span>
+Undo = require <span class="string">"undo"</span>
 
 module.<span class="function"><span class="title">exports</span></span> = (I={}) -&gt;
   self = Composition(I)
 
-  self.include Command
+  self.include Command, Undo
 
   self.extend
     items: Observable []
 
     load: (data) -&gt;
       self.items data.map Item
+
+
 
   <span class="keyword">return</span> self</code></pre>
 </div>

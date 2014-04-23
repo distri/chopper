@@ -33,10 +33,14 @@ module.<span class="function"><span class="title">exports</span></span> = (I={},
     data.previous ?= self.items.get(data.index).transform()
 
     execute: -&gt;
-      self.items.get(data.index).transform data.transform()
+      self.items.get(data.index).transform data.transform
 
     undo: -&gt;
-      self.items.get(data.index).transfrom data.previous
+      self.items.get(data.index).transform data.previous
+
+    set: (transform) -&gt;
+      data.transform = transform
+      <span class="property">@execute</span>()
 
   C <span class="string">"Composite"</span>, (data) -&gt;
     <span class="keyword">if</span> data.commands

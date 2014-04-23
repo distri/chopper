@@ -50,6 +50,7 @@ module.<span class="function"><span class="title">exports</span></span> = ($elem
   anchor = <span class="literal">null</span>
   startPosition = <span class="literal">null</span>
   initialTransform = <span class="literal">null</span>
+  lastCommand = <span class="literal">null</span>
   center = <span class="literal">null</span>
   scaling = <span class="literal">null</span>
   rotating = <span class="literal">null</span>
@@ -58,6 +59,7 @@ module.<span class="function"><span class="title">exports</span></span> = ($elem
     items: editor.items
     item: activeItem
     view: activeView
+    editor: editor
 
   $element.bind
     <span class="string">"touchstart mousedown"</span>: (event) -&gt;
@@ -67,12 +69,18 @@ module.<span class="function"><span class="title">exports</span></span> = ($elem
 
         active = <span class="literal">true</span>
         activeView = target
-        activeItem = editor.items.get $(<span class="string">".items img"</span>).index(target)
+        index = $(<span class="string">".items img"</span>).index(target)
+        activeItem = editor.items.get index
         initialTransform = activeItem.transform()
         center = activeItem.center()
         anchor = activeItem.anchor()
 
-        console.log anchor
+        lastCommand = editor.Command.Transform
+          index: index
+          transform: initialTransform
+          previous: initialTransform
+
+        editor.execute lastCommand
 
         $(debugPoint).css
           top: center.y
@@ -109,7 +117,7 @@ module.<span class="function"><span class="title">exports</span></span> = ($elem
         deltaTransform = Matrix.translation(p.subtract(startPosition))
 
       <span class="keyword">if</span> deltaTransform
-        activeItem.transform deltaTransform.concat initialTransform 
+        lastCommand.set deltaTransform.concat initialTransform
 
     <span class="string">"touchend mouseup"</span>: (event) -&gt;
       active = <span class="literal">false</span>
