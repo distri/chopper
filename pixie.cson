@@ -8,4 +8,5 @@ dependencies:
   matrix: "distri/matrix:v0.3.1"
   observable: "distri/observable:v0.1.1"
   point: "distri/point:v0.2.0"
+  undo: "distri/undo:v0.2.0"
   util: "distri/util:v0.1.0"

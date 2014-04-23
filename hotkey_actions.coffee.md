@@ -22,6 +22,8 @@ Hotkey Actions
       del: "delete"
       return: "duplicate"
       "ctrl+s": "save"
+      "ctrl+z": "undo"
+      "ctrl+y": "redo"
 
     actions =
       displayHelp: ->
@@ -34,6 +36,10 @@ Hotkey Actions
         newItem = Item item.copy()
         newItem.position newItem.position().add(Point(20, 20))
         items.push newItem
+      undo: ({editor}) ->
+        editor.undo()
+      redo: ({editor}) ->
+        editor.redo()
 
 Saves to address bar for now.
 

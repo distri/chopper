@@ -17,6 +17,7 @@ Highway through the Dragger Zone
       anchor = null
       startPosition = null
       initialTransform = null
+      lastCommand = null
       center = null
       scaling = null
       rotating = null
@@ -25,6 +26,7 @@ Highway through the Dragger Zone
         items: editor.items
         item: activeItem
         view: activeView
+        editor: editor
 
       $element.bind
         "touchstart mousedown": (event) ->
@@ -34,12 +36,18 @@ Highway through the Dragger Zone
 
             active = true
             activeView = target
-            activeItem = editor.items.get $(".items img").index(target)
+            index = $(".items img").index(target)
+            activeItem = editor.items.get index
             initialTransform = activeItem.transform()
             center = activeItem.center()
             anchor = activeItem.anchor()
 
-            console.log anchor
+            lastCommand = editor.Command.Transform
+              index: index
+              transform: initialTransform
+              previous: initialTransform
+            
+            editor.execute lastCommand
 
             $(debugPoint).css
               top: center.y
@@ -76,7 +84,7 @@ Highway through the Dragger Zone
             deltaTransform = Matrix.translation(p.subtract(startPosition))
 
           if deltaTransform
-            activeItem.transform deltaTransform.concat initialTransform 
+            lastCommand.set deltaTransform.concat initialTransform
 
         "touchend mouseup": (event) ->
           active = false

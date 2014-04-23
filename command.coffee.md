@@ -11,10 +11,14 @@
         data.previous ?= self.items.get(data.index).transform()
 
         execute: ->
-          self.items.get(data.index).transform data.transform()
+          self.items.get(data.index).transform data.transform
 
         undo: ->
-          self.items.get(data.index).transfrom data.previous
+          self.items.get(data.index).transform data.previous
+
+        set: (transform) ->
+          data.transform = transform
+          @execute()
 
       C "Composite", (data) ->
         if data.commands
