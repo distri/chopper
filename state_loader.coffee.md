@@ -7,9 +7,9 @@ Otherwise we get one from S3
 
     module.exports = (editor) ->
       global.ENV ?= {}
-  
+
       ENV.APP_STATE ?= location.hash.substring(1)
-  
+
       if data = ENV.APP_STATE
         editor.load JSON.parse(data)
       else

@@ -20,7 +20,7 @@ Chop up images in the chop shop.
 
     Dragzone = require "./lib/dragzone"
 
-    Dragzone($("body"), editor.items)
+    Dragzone($("body"), editor)
 
     template = require "./templates/editor"
     document.body.appendChild template editor

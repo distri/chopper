@@ -1,8 +1,8 @@
     Command = require "./lib/command"
-    
+
     module.exports = (I={}, self) ->
       self.include Command
-      
+
       C = self.Command.register
 
       # TODO: Add, Delete, Raise, Lower

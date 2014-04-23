@@ -20,12 +20,13 @@ Item Model
         copy: ->
           extend {}, I
 
+        anchor: ->
+          Point(1, 1).scale(self.size().scale(0.5))
+
         center: ->
-          size = Point(1, 1).scale(self.transform().scaleComponent().scale(0.5))
+          self.anchor().add(self.position())
 
-          self.position().add(size)
-
-      self.attrObservable "transform", "size"
+      self.attrObservable "transform", "src", "size"
 
       autosize = (src) ->
         img = document.createElement "img"

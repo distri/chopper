@@ -1,6 +1,7 @@
 Highway through the Dragger Zone
 ================================
 
+    Matrix = require "matrix"
     Point = require "point"
 
     debugPoint = document.createElement "div"
@@ -13,10 +14,12 @@ Highway through the Dragger Zone
       active = false
       activeItem = null
       activeView = null
-      offset = null
+      anchor = null
       startPosition = null
       initialTransform = null
       center = null
+      scaling = null
+      rotating = null
 
       Actions ->
         items: editor.items
@@ -32,13 +35,15 @@ Highway through the Dragger Zone
             active = true
             activeView = target
             activeItem = editor.items.get $(".items img").index(target)
+            initialTransform = activeItem.transform()
             center = activeItem.center()
+            anchor = activeItem.anchor()
+
+            console.log anchor
 
             $(debugPoint).css
               top: center.y
               left: center.x
-
-            initialTransform = activeItem.transform()
 
             scaling = false
             rotating = false
@@ -49,9 +54,6 @@ Highway through the Dragger Zone
               rotating = true
 
             startPosition = localPosition(event)
-            itemStart = activeItem.position()
-
-            offset = itemStart.subtract startPosition
 
           return
 
@@ -62,19 +64,19 @@ Highway through the Dragger Zone
           # TODO: Need to use more generalized transform concatenation to allow
           # scale and rotation to occur independently
 
-          if initialScale
+          if scaling
             initialVec = startPosition.subtract center
             currentVec = p.subtract center
-            deltaScale = Point currentVec.x / initialVec.x, currentVec.y / initialVec.y
-
-            activeItem.scale Point deltaScale.x * initialScale.x, deltaScale.y * initialScale.y
-          else if initialRotation?
+            deltaTransform = Matrix.scale currentVec.x / initialVec.x, currentVec.y / initialVec.y, initialTransform.translationComponent()
+          else if rotating
             vec = p.subtract center
             initialVec = startPosition.subtract center
-            deltaRotation = Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x)
-            activeItem.rotation initialRotation + deltaRotation
+            deltaTransform = Matrix.rotation Math.atan2(vec.y, vec.x) - Math.atan2(initialVec.y, initialVec.x), initialTransform.translationComponent()
           else
-            activeItem.transform initialTransform.concat(Matrix.translation(p.add offset))
+            deltaTransform = Matrix.translation(p.subtract(startPosition))
+
+          if deltaTransform
+            activeItem.transform deltaTransform.concat initialTransform 
 
         "touchend mouseup": (event) ->
           active = false

@@ -6,6 +6,8 @@ Duct Tape
     Size = require "./lib/size"
     Matrix = require "matrix"
 
+    {sqrt} = Math
+
     Matrix.Point = Point
 
     Point::scale = (width, height) ->
@@ -20,7 +22,7 @@ Duct Tape
       Point(Math.abs(@x), Math.abs(@y))
 
     Matrix::scaleComponent = ->
-      Size sqrt(@a * @a, @b * @b), sqrt(@c * @c, @d * @d)
+      Size sqrt(@a * @a + @b * @b), sqrt(@c * @c + @d * @d)
 
     Matrix::translationComponent = ->
       Point @tx, @ty
@@ -33,7 +35,7 @@ Convert matrix to CSS string.
       prefix = ""
 
     Matrix::css = ->
-      "#{prefix}transform: matrix(#{@a}, #{@b}, #{@c}, #{@d}, #{tx}, #{ty});"
+      "#{prefix}transform: matrix(#{@a}, #{@b}, #{@c}, #{@d}, #{@tx}, #{@ty});"
 
     Matrix.translation = Matrix.translate = (x, y) ->
       if typeof x is "object"
