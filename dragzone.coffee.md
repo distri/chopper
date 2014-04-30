@@ -34,19 +34,22 @@ Highway through the Dragger Zone
           if $target.is "img"
             event.preventDefault()
 
+            offset = $element.get(0).getBoundingClientRect()
+            offset = Point(offset.left, offset.top)
+
             active = true
             activeView = target
             index = $(".items img").index(target)
             activeItem = editor.items.get index
             initialTransform = activeItem.transform()
-            center = activeItem.center()
             anchor = activeItem.anchor()
+            center = offset.add(activeItem.center()).subtract(anchor)
 
             lastCommand = editor.Command.Transform
               index: index
               transform: initialTransform
               previous: initialTransform
-            
+
             editor.execute lastCommand
 
             $(debugPoint).css

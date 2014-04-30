@@ -18,12 +18,11 @@ Chop up images in the chop shop.
 
     require("./state_loader")(editor)
 
-    Dragzone = require "./lib/dragzone"
-
-    Dragzone($("body"), editor)
-
     template = require "./templates/editor"
     document.body.appendChild template editor
+
+    Dragzone = require "./dragzone"
+    Dragzone($(".items"), editor)
 
     Item = require "./item"
 
