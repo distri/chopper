@@ -41,6 +41,7 @@ Item Model
       autosize self.src()
 
       self.css = Observable ->
-        self.transform().css()
+        {x, y} = self.anchor().scale(-1)
+        Matrix.translation(x, y).concat(self.transform()).css()
 
       return self
